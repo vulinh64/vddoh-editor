@@ -653,7 +653,18 @@ Base Move
 Base Regen
 ```
 
-The current editor also exposes editable base critical hit fields:`r`n`r`n```text`r`nBase Crit %`r`nBase Crit Dmg %`r`n``` `r`n`r`nThese are the two bytes of the packed hero crit field, previously mistaken for HP/resource flat seeds. Base Evasion is shown as read-only because it is hardcoded as `5 + Reflexes bonus`, not stored per hero in `game.dat`.`r`n`r`nThe current editor also shows read-only cap previews:
+The current editor also exposes editable base critical hit fields:
+
+```text
+Base Crit %
+Base Crit Dmg %
+```
+
+These are the two bytes of the packed hero crit field, previously mistaken for
+HP/resource flat seeds. Base Evasion is shown as read-only because it is
+hardcoded as `5 + Reflexes bonus`, not stored per hero in `game.dat`.
+
+The current editor also shows read-only cap previews:
 
 ```text
 STR @ Cap

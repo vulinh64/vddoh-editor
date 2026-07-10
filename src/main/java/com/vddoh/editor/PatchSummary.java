@@ -1,0 +1,82 @@
+package com.vddoh.editor;
+
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.event.MouseEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.RowFilter;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableRowSorter;
+
+import static com.vddoh.editor.EditorSupport.*;
+
+final class PatchSummary {
+    int cost;
+    int damage;
+    int status;
+    int price;
+    int icon;
+    int hp;
+    int resource;
+    int duration;
+    int expire;
+    int heroStats;
+    int heroSeeds;
+    int heroResistOverflow;
+    int talentAmount;
+    int skipped;
+    public String toString() {
+        List<String> parts = new ArrayList<>();
+        if (cost != 0) parts.add("cost=" + cost);
+        if (damage != 0) parts.add("damage=" + damage);
+        if (status != 0) parts.add("status=" + status);
+        if (price != 0) parts.add("price=" + price);
+        if (icon != 0) parts.add("icon=" + icon);
+        if (hp != 0) parts.add("hp=" + hp);
+        if (resource != 0) parts.add("resource=" + resource);
+        if (duration != 0) parts.add("duration=" + duration);
+        if (expire != 0) parts.add("expire=" + expire);
+        if (heroStats != 0) parts.add("heroStats=" + heroStats);
+        if (heroSeeds != 0) parts.add("heroCrit=" + heroSeeds);
+        if (heroResistOverflow != 0) parts.add("heroResistOverflow=" + heroResistOverflow);
+        if (talentAmount != 0) parts.add("talentAmount=" + talentAmount);
+        parts.add("skipped=" + skipped);
+        return joinParts(parts);
+    }
+}

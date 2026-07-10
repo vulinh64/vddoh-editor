@@ -5,8 +5,9 @@ This project contains the current Swing data editor and reverse-engineering note
 ## Current Project State
 
 - [x] Moved the editor into a Maven-style project: `vddoh-editor/`.
-- [x] Main source moved to `src/main/java/VddohDataEditor.java`.
+- [x] Main source moved to a Maven-style Java package under `src/main/java/com/vddoh/editor/`.
 - [x] Java ME `Font` stub moved to `src/main/java/javax/microedition/lcdui/Font.java`.
+- [x] Added `me-lib/` Java ME API jars from KEmulator UEI for reflection-loading original game classes.
 - [x] Added Maven wrapper files: `mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`.
 - [x] Added `pom.xml` targeting JDK 25.
 - [x] Added `run-vddoh-editor.cmd` to run `target/vddoh-data-editor-1.0.0.jar`.
@@ -29,6 +30,7 @@ This project contains the current Swing data editor and reverse-engineering note
 - [x] Search support across Skills, Heroes, Items, Monsters, and Statuses.
 - [x] Build patched JAR by replacing modified entries.
 - [x] Optional `Patch resistance overflow` checkbox for the confirmed resistance byte overflow bug.
+- [x] Split the former monolithic `VddohDataEditor.java` into package-scoped classes for UI, table models, data rows, patch requests, patchers, offsets, and shared support helpers.
 
 ## Latest Bytecode Patch State
 
@@ -53,6 +55,24 @@ Future improvement: use JDK 25's Class-File API from JEP 484 for structural clas
 - [ ] Add explicit patch validation reports before writing output JAR.
 - [ ] Add unit tests or small command-line verifier for patchers.
 - [ ] Update docs when new field mappings become confirmed.
+
+## Source Layout
+
+The editor now lives in package `com.vddoh.editor`.
+
+Key entry points:
+
+```text
+src/main/java/com/vddoh/editor/VddohDataEditor.java              Main class only
+src/main/java/com/vddoh/editor/EditorFrame.java                  Swing UI coordinator
+src/main/java/com/vddoh/editor/EditorSupport.java                Shared parsing, JAR, reflection, decode, and validation helpers
+src/main/java/com/vddoh/editor/*TableModel.java                  Swing table models
+src/main/java/com/vddoh/editor/*Row.java                         Editable/read-only row data
+src/main/java/com/vddoh/editor/*Patch.java                       Patch request DTOs
+src/main/java/com/vddoh/editor/*Patcher.java                     game.dat/item.dat/class patchers
+src/main/java/com/vddoh/editor/*Offsets.java                     Packed-data offset holders
+me-lib/*.jar                                                     Java ME API jars used by the editor class loader
+```
 
 ## Build And Run
 

@@ -9,7 +9,8 @@ Central entry point for future VDDOH reverse-engineering. Read this before openi
 ../decompiled/renamed-classes/             Renamed/decompiled runtime classes
 ../decompiled/data-json-reflect/            JSON reflection dumps from original classes
 ../decompiled/data-tools/                   Older data extraction tools and notes
-src/main/java/VddohDataEditor.java          Current editor and patcher implementation
+src/main/java/com/vddoh/editor/             Current editor and patcher implementation
+me-lib/                                     Java ME API jars copied from KEmulator UEI for reflection loading
 VDDOH-STATS-MECHANISM.md                    Confirmed mechanics
 PROGRESS.md                                 Current status and next checklist
 ```
@@ -86,16 +87,19 @@ If a JSON file is large, search within it instead of reading all of it.
 
 ## Editor Patchers
 
-In `VddohDataEditor.java`:
+In `src/main/java/com/vddoh/editor/`:
 
 | Class | Purpose |
 |---|---|
-| `GameDatSkillPatcher` | Writes safe skill cost/damage/status changes. |
-| `GameDatTalentPatcher` | Writes safe talent amount/link changes. |
-| `GameDatHeroPatcher` | Writes hero stat curves, level cap, base crit bytes. |
-| `ItemDatPatcher` | Writes safe item top-level fields. |
-| `GameDatStatusPatcher` | Writes safe status fields. |
-| `ResistanceOverflowClassPatcher` | Optional `g.class` bytecode patch for resistance overflow. |
+| `VddohDataEditor.java` | Main class only. |
+| `EditorFrame.java` | Swing UI coordinator and build/load actions. |
+| `EditorSupport.java` | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers. |
+| `GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
+| `GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
+| `GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |
+| `ItemDatPatcher.java` | Writes safe item top-level fields. |
+| `GameDatStatusPatcher.java` | Writes safe status fields. |
+| `ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow. |
 
 ## Future Direction
 

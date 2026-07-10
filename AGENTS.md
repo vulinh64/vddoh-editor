@@ -9,7 +9,7 @@ Read these files first, in this order:
 1. `PROGRESS.md` - current implementation state and next checklist.
 2. `docs/REVERSE_ENGINEERING_INDEX.md` - compact map of useful decompiled classes and data files.
 3. `VDDOH-STATS-MECHANISM.md` - confirmed mechanics and field interpretations.
-4. `src/main/java/VddohDataEditor.java` only after reading the targeted notes above.
+4. `src/main/java/com/vddoh/editor/VddohDataEditor.java` and related `com.vddoh.editor` classes only after reading the targeted notes above.
 
 Do not start by dumping entire decompiled classes into context. They are large and wasteful.
 
@@ -74,7 +74,7 @@ This session hit several PowerShell-specific hiccups. Use these rules to avoid r
 - Watch for accidentally writing literal `` `r`n`` text into `.java` files. Verify with:
 
 ```powershell
-Select-String -Path src\main\java\VddohDataEditor.java -Pattern '`r`n' -SimpleMatch
+Select-String -Path src\main\java\com\vddoh\editor\*.java -Pattern '`r`n' -SimpleMatch
 ```
 
 - In PowerShell wildcard matching, patterns like `*byte[]*` can fail because `[]` has wildcard meaning. Use `.Contains(...)` for literal substring checks.
