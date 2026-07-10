@@ -1,73 +1,40 @@
 package com.vddoh.editor;
 
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
-import java.awt.event.MouseEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.RowFilter;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableRowSorter;
+import java.io.Serial;
+import java.io.Serializable;
 
-import static com.vddoh.editor.EditorSupport.*;
+final class StatusRow implements Serializable {
 
-final class StatusRow {
-    final int id;
-    final String name;
-    final int originalDuration;
-    final int originalExpireChance;
-    final int originalIcon;
-    final String notes;
-    int duration;
-    int expireChance;
-    int icon;
-    StatusRow(int id, String name, int duration, int expireChance, int icon, String notes) {
-        this.id = id;
-        this.name = name;
-        this.duration = this.originalDuration = duration;
-        this.expireChance = this.originalExpireChance = expireChance;
-        this.icon = this.originalIcon = icon;
-        this.notes = notes;
-    }
-    boolean changed() { return duration != originalDuration || expireChance != originalExpireChance || icon != originalIcon; }
-    void reset() {
-        duration = originalDuration;
-        expireChance = originalExpireChance;
-        icon = originalIcon;
-    }
+  @Serial private static final long serialVersionUID = 7619741879065234600L;
+
+  final int id;
+  final String name;
+  final int originalDuration;
+  final int originalExpireChance;
+  final int originalIcon;
+  final String notes;
+  int duration;
+  int expireChance;
+  int icon;
+
+  StatusRow(int id, String name, int duration, int expireChance, int icon, String notes) {
+    this.id = id;
+    this.name = name;
+    this.duration = originalDuration = duration;
+    this.expireChance = originalExpireChance = expireChance;
+    this.icon = originalIcon = icon;
+    this.notes = notes;
+  }
+
+  boolean changed() {
+    return duration != originalDuration
+        || expireChance != originalExpireChance
+        || icon != originalIcon;
+  }
+
+  void reset() {
+    duration = originalDuration;
+    expireChance = originalExpireChance;
+    icon = originalIcon;
+  }
 }

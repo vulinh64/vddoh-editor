@@ -560,7 +560,7 @@ Behavior:
 Input JAR already patched:
   checkbox is checked and disabled
 
-Input JAR has the known vanilla bytecode pattern:
+Input JAR has the known vanilla bytecode pattern and semantic clamp shape:
   checkbox is enabled and unchecked by default
 
 Input JAR has an unknown g.class layout:
@@ -568,8 +568,10 @@ Input JAR has an unknown g.class layout:
 ```
 
 When enabled and checked during `Build Patched JAR`, the editor rewrites `g.class`
-inside the output JAR. The current implementation is a conservative raw class-byte
-patch against a unique bytecode pattern in hero class `g` / renamed `Hero`.
+inside the output JAR. The current implementation is a hybrid patcher for hero
+class `g` / renamed `Hero`: it uses JDK 25's Class-File API to confirm exactly
+one semantic match in `g.b()V`, then applies a byte-minimal raw replacement
+against the confirmed byte pattern.
 
 Original clamp behavior:
 
@@ -591,11 +593,24 @@ else if resistanceByte > 100:
 
 This means common overflows such as `100 + 100 -> byte -56` become `100` instead
 of `0`. The patch is intentionally narrow: it only applies when exactly one known
-vanilla byte pattern is found, and it refuses unknown class layouts.
+vanilla byte pattern is found and Class-File API confirms the same resistance
+clamp shape, and it refuses unknown class layouts.
 
-Future improvement: because the working JDK is 25, prefer the standard Class-File
-API from JEP 484 for future bytecode edits. That would be cleaner than raw byte
-pattern replacement and should make future patches easier to verify structurally.
+Future improvement: a full Class-File API transform prototype worked and
+preserved the old J2ME class version `45.3`, but the hybrid detector plus raw
+writer currently keeps the patch smaller and easier to audit. Prefer a full
+Class-File API transform if more class patches are added.
+
+Current bytecode-tooling recommendation:
+
+```text
+Default: JDK 25 Class-File API for structural class patches.
+Fallback: ASM only if a concrete instruction rewrite is too awkward with the
+          standard API.
+Avoid for now: Byte Buddy, because the editor patches JAR entries offline rather
+               than generating or instrumenting classes at runtime.
+Possible but not preferred: BCEL.
+```
 
 ## EXP Curve and Leveling Notes
 
@@ -629,6 +644,79 @@ There is also a likely EXP award bug in the battle-result code: EXP is awarded
 in chunks of 4, but when the remaining EXP is `1..3`, the code appears to award
 the remaining Filar value instead of the remaining EXP value. This can make the
 final small EXP remainder after a battle incorrect.
+
+## Monster Editor Notes
+
+The monster table now uses the original monster class (`b`) through reflection
+to show names and scalar attributes. Names are read-only.
+
+Current safe writable fields:
+
+```text
+EXP         0..4095
+Filar       0..4095
+Death Value 0..127
+Effect ID   0..255
+```
+
+`EXP`, `Filar`, and `Death Value` are the fixed packed scalar block immediately
+after the monster name in `game.dat`. `EXP` and `Filar` are 12-bit values:
+
+```text
+byte0                  = EXP high 8 bits
+byte1 high nibble      = EXP low 4 bits
+byte1 low nibble       = Filar high 4 bits
+byte2                  = Filar low 8 bits
+byte3                  = Death Value
+```
+
+Battle-result bytecode confirms the reward totals:
+
+```text
+resultExperience += monster.EXP
+resultFilar      += monster.Filar
+```
+
+In-game test: four `Junger Gabolg` units configured to `EXP=120`,
+`Filar=120`, and `Death Value=25` awarded `480 EXP` and `480 Filar`. This
+confirms `Death Value` is separate from battle-result reward totals.
+
+`Effect ID` is the last byte of the 13-byte monster tail and is reflected as
+monster field ordinal `16`. It is used by monster death-side effect handling,
+not by the battle-result EXP/Filar totals.
+
+The editor also shows read-only monster stat previews:
+
+```text
+Base HP
+Base Resource
+Base Attack
+Base Defense
+Base Move
+STR-like / SPI-like / VIT-like / SPD-like
+Hit % / Crit-Dmg % / Evade-Guard %
+Packed Chance
+Packed Tail A / Packed Tail B
+Actions / Effects / Drops counts
+```
+
+The visible monster HP is derived at runtime from the core stat bytes, not taken
+directly from the packed `short e` / `short f` tail fields. For example,
+`Schlange (3)` reflects STR-like `4` and VIT-like `4`, so:
+
+```text
+Base HP = ((VIT * 70 + STR * 30) * 12 / 100)
+        = ((4 * 70 + 4 * 30) * 12 / 100)
+        = 48
+```
+
+This matches the Rescue Meryo snake's observed 48 HP. Earlier editor wording
+that displayed packed tail values such as `1356` as HP was misleading; those
+values are now shown only as packed diagnostics. The 13-byte tail is still
+packed enough that direct HP/combat writes should not be expanded until the bit
+layout is confirmed against bytecode and patched JAR tests. Drops and
+skills/effects are variable-length arrays and should likewise stay read-only
+until their record formats are mapped.
 
 ## Editor Notes
 

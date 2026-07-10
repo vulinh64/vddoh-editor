@@ -5,4 +5,4 @@ import lombok.With;
 
 @Builder
 @With
-record StatusPatch(int statusId, int duration, int expireChance, int icon) {}
+record MonsterOffsets(int fixedOffset, int effectOffset) {}

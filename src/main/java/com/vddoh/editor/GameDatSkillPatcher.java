@@ -1,139 +1,288 @@
 package com.vddoh.editor;
 
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
-import java.awt.event.MouseEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import static com.vddoh.editor.EditorSupport.checkedByte;
+import static com.vddoh.editor.EditorSupport.encodeSignedChance;
+import static com.vddoh.editor.EditorSupport.skipDamageGroups;
+import static com.vddoh.editor.EditorSupport.skipStatuses;
+import static com.vddoh.editor.EditorSupport.u16;
+import static com.vddoh.editor.EditorSupport.u8;
+import static com.vddoh.editor.EditorSupport.writeU16;
+
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.RowFilter;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
-import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableRowSorter;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.With;
 
-import static com.vddoh.editor.EditorSupport.*;
-
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 final class GameDatSkillPatcher {
-    static PatchSummary patch(byte[] data, List<SkillPatch> patches) {
-        PatchSummary summary = new PatchSummary();
-        int n = 13 + u16(data, 11) * 5;
-        n = skipDamageGroups(data, n);
-        n = skipStatuses(data, n);
-        int skillCount = u8(data[n++]);
-        for (int skillId = 0; skillId < skillCount; skillId++) {
-            int nameLen = data[n] & 0x1f;
-            n += 1 + nameLen;
-            int header = u8(data[n++]);
-            int levelCount = ((header >> 6) & 3) + 1;
-            int modeD = (header >> 4) & 3;
-            int inheritedFlags = header & 7;
 
-            int baseCostOffset = n++;
-            int packedUsabilityOffset = n++;
-            inheritedFlags = inheritedFlags | ((data[packedUsabilityOffset] & 1) << 3);
-            if ((data[packedUsabilityOffset] & 8) != 0) n++;
-            n++;
-            if ((inheritedFlags & 1) != 0) n += 2;
-            int damageCount = u8(data[n++]);
-            int baseDamageOffset = n;
-            n += damageCount * 3;
-            int statusCount = 0;
-            int baseStatusOffset = -1;
-            if ((inheritedFlags & 8) != 0) {
-                statusCount = u8(data[n++]);
-                baseStatusOffset = n;
-                n += statusCount * 2;
-            }
-            n += 2;
-            if ((inheritedFlags & 4) != 0) n += 2;
-            if ((inheritedFlags & 2) != 0) n += 2;
-            n++;
-
-            List<LevelOffsets> offsets = new ArrayList<>();
-            offsets.add(new LevelOffsets(baseCostOffset, baseDamageOffset, damageCount, baseStatusOffset, statusCount));
-            for (int level = 1; level < levelCount; level++) {
-                LevelOffsets o = new LevelOffsets(-1, -1, damageCount, -1, statusCount);
-                int flags = u8(data[n++]);
-                int flags2 = u8(data[n++]);
-                if ((flags & 8) != 0) n++;
-                if ((flags & 0x80) != 0 && (flags2 & 0x80) != 0) n++;
-                if ((flags & 0x40) != 0) n++;
-                if ((flags & 0x20) != 0 && (flags2 & 8) != 0) n += 2;
-                if ((flags & 0x10) != 0) o.costOffset = n++;
-                if ((flags2 & 0x10) != 0 || (flags & 4) != 0) n++;
-                if ((flags & 4) != 0) n++;
-                if ((flags2 & 4) != 0) n++;
-                else if ((flags & 2) != 0) {
-                    o.damageOffset = n;
-                    n += damageCount * 2;
-                }
-                if ((flags2 & 2) != 0) n++;
-                else if ((flags & 1) != 0) {
-                    o.statusOffset = n;
-                    n += statusCount;
-                }
-                n += 2;
-                offsets.add(o);
-            }
-
-            for (SkillPatch patch : patches) {
-                if (patch.skillId != skillId || patch.levelIndex < 0 || patch.levelIndex >= offsets.size()) continue;
-                LevelOffsets o = offsets.get(patch.levelIndex);
-                if (o.costOffset >= 0) {
-                    data[o.costOffset] = checkedByte(patch.cost, "cost");
-                    summary.cost++;
-                } else summary.skipped++;
-                for (SkillEffectRow effect : patch.effects) {
-                    if (!effect.changed()) continue;
-                    if ("Damage".equals(effect.type)) {
-                        if (o.damageOffset >= 0 && effect.index >= 0 && effect.index < o.damageCount) {
-                            int offset = patch.levelIndex == 0 ? o.damageOffset + effect.index * 3 + 1 : o.damageOffset + effect.index * 2;
-                            writeU16(data, offset, effect.value);
-                            summary.damage++;
-                        } else summary.skipped++;
-                    } else if (effect.isStatus()) {
-                        if (o.statusOffset >= 0 && effect.index >= 0 && effect.index < o.statusCount) {
-                            int offset = patch.levelIndex == 0 ? o.statusOffset + effect.index * 2 + 1 : o.statusOffset + effect.index;
-                            data[offset] = encodeSignedChance(effect.encodedValue());
-                            summary.status++;
-                        } else summary.skipped++;
-                    }
-                }
-            }
-        }
-        return summary;
+  static PatchSummary patch(byte[] data, List<SkillPatch> patches) {
+    PatchSummary summary = new PatchSummary();
+    int cursor = skillTableOffset(data);
+    int skillCount = u8(data[cursor++]);
+    for (int skillId = 0; skillId < skillCount; skillId++) {
+      ParsedSkillLayout skillLayout = parseSkillLayout(data, cursor);
+      cursor = skillLayout.nextOffset();
+      applyPatchesForSkill(data, patches, skillId, skillLayout.levelOffsets(), summary);
     }
+    return summary;
+  }
+
+  private static int skillTableOffset(byte[] data) {
+    int cursor = 13 + u16(data, 11) * 5;
+    cursor = skipDamageGroups(data, cursor);
+    return skipStatuses(data, cursor);
+  }
+
+  private static ParsedSkillLayout parseSkillLayout(byte[] data, int offset) {
+    int cursor = offset;
+    int nameLength = data[cursor] & 0x1f;
+    cursor += 1 + nameLength;
+    int header = u8(data[cursor++]);
+    int levelCount = ((header >> 6) & 3) + 1;
+
+    ParsedBaseLevelLayout baseLevel = parseBaseLevelLayout(data, cursor, header & 7);
+    cursor = baseLevel.nextOffset();
+
+    List<LevelOffsets> offsets = new ArrayList<>(levelCount);
+    offsets.add(baseLevel.offsets());
+    for (int level = 1; level < levelCount; level++) {
+      ParsedLevelOverrideLayout overrideLevel =
+          parseOverrideLevelLayout(
+              data, cursor, baseLevel.damageEffectCount(), baseLevel.statusEffectCount());
+      offsets.add(overrideLevel.offsets());
+      cursor = overrideLevel.nextOffset();
+    }
+    return ParsedSkillLayout.builder().levelOffsets(offsets).nextOffset(cursor).build();
+  }
+
+  private static ParsedBaseLevelLayout parseBaseLevelLayout(
+      byte[] data, int offset, int inheritedFlags) {
+    int cursor = offset;
+    int baseCostOffset = cursor++;
+    int packedUsabilityOffset = cursor++;
+    int effectiveFlags = inheritedFlags | ((data[packedUsabilityOffset] & 1) << 3);
+    if ((data[packedUsabilityOffset] & 8) != 0) {
+      cursor++;
+    }
+    cursor++;
+    if ((effectiveFlags & 1) != 0) {
+      cursor += 2;
+    }
+
+    int damageEffectCount = u8(data[cursor++]);
+    int baseDamageOffset = cursor;
+    cursor += damageEffectCount * 3;
+
+    int statusEffectCount = 0;
+    int baseStatusOffset = -1;
+    if ((effectiveFlags & 8) != 0) {
+      statusEffectCount = u8(data[cursor++]);
+      baseStatusOffset = cursor;
+      cursor += statusEffectCount * 2;
+    }
+    cursor = skipBaseLevelTail(cursor, effectiveFlags);
+
+    LevelOffsets offsets =
+        LevelOffsets.builder()
+            .costOffset(baseCostOffset)
+            .damageOffset(baseDamageOffset)
+            .damageCount(damageEffectCount)
+            .statusOffset(baseStatusOffset)
+            .statusCount(statusEffectCount)
+            .build();
+    return ParsedBaseLevelLayout.builder()
+        .offsets(offsets)
+        .nextOffset(cursor)
+        .damageEffectCount(damageEffectCount)
+        .statusEffectCount(statusEffectCount)
+        .build();
+  }
+
+  private static int skipBaseLevelTail(int offset, int inheritedFlags) {
+    int cursor = offset + 2;
+    if ((inheritedFlags & 4) != 0) {
+      cursor += 2;
+    }
+    if ((inheritedFlags & 2) != 0) {
+      cursor += 2;
+    }
+    return cursor + 1;
+  }
+
+  private static ParsedLevelOverrideLayout parseOverrideLevelLayout(
+      byte[] data, int offset, int damageEffectCount, int statusEffectCount) {
+    int cursor = offset;
+    LevelOffsets offsets =
+        LevelOffsets.builder()
+            .costOffset(-1)
+            .damageOffset(-1)
+            .damageCount(damageEffectCount)
+            .statusOffset(-1)
+            .statusCount(statusEffectCount)
+            .build();
+    int overrideFlags = u8(data[cursor++]);
+    int reuseFlags = u8(data[cursor++]);
+
+    cursor = skipOverrideLevelPrefix(cursor, overrideFlags, reuseFlags);
+    if ((overrideFlags & 0x10) != 0) {
+      offsets = offsets.withCostOffset(cursor++);
+    }
+    cursor = skipOverrideLevelVisualFields(cursor, overrideFlags, reuseFlags);
+
+    if ((reuseFlags & 4) != 0) {
+      cursor++;
+    } else if ((overrideFlags & 2) != 0) {
+      offsets = offsets.withDamageOffset(cursor);
+      cursor += damageEffectCount * 2;
+    }
+
+    if ((reuseFlags & 2) != 0) {
+      cursor++;
+    } else if ((overrideFlags & 1) != 0) {
+      offsets = offsets.withStatusOffset(cursor);
+      cursor += statusEffectCount;
+    }
+
+    return ParsedLevelOverrideLayout.builder().offsets(offsets).nextOffset(cursor + 2).build();
+  }
+
+  static int skipOverrideLevelPrefix(int offset, int overrideFlags, int reuseFlags) {
+    int cursor = offset;
+    if ((overrideFlags & 8) != 0) {
+      cursor++;
+    }
+    if ((overrideFlags & 0x80) != 0 && (reuseFlags & 0x80) != 0) {
+      cursor++;
+    }
+    if ((overrideFlags & 0x40) != 0) {
+      cursor++;
+    }
+    if ((overrideFlags & 0x20) != 0 && (reuseFlags & 8) != 0) {
+      cursor += 2;
+    }
+    return cursor;
+  }
+
+  private static int skipOverrideLevelVisualFields(int offset, int overrideFlags, int reuseFlags) {
+    int cursor = offset;
+    if ((reuseFlags & 0x10) != 0 || (overrideFlags & 4) != 0) {
+      cursor++;
+    }
+    if ((overrideFlags & 4) != 0) {
+      cursor++;
+    }
+    return cursor;
+  }
+
+  private static void applyPatchesForSkill(
+      byte[] data,
+      List<SkillPatch> patches,
+      int skillId,
+      List<LevelOffsets> offsets,
+      PatchSummary summary) {
+    for (SkillPatch patch : patches) {
+      if (!patchTargetsParsedLevel(patch, skillId, offsets)) {
+        continue;
+      }
+      applyLevelPatch(data, patch, offsets.get(patch.levelIndex()), summary);
+    }
+  }
+
+  private static boolean patchTargetsParsedLevel(
+      SkillPatch patch, int skillId, List<LevelOffsets> offsets) {
+    return patch.skillId() == skillId
+        && patch.levelIndex() >= 0
+        && patch.levelIndex() < offsets.size();
+  }
+
+  private static void applyLevelPatch(
+      byte[] data, SkillPatch patch, LevelOffsets offsets, PatchSummary summary) {
+    writeLevelCost(data, patch, offsets, summary);
+    for (SkillEffectRow effect : patch.effects()) {
+      if (effect.changed()) {
+        writeLevelEffect(data, patch.levelIndex(), offsets, effect, summary);
+      }
+    }
+  }
+
+  private static void writeLevelCost(
+      byte[] data, SkillPatch patch, LevelOffsets offsets, PatchSummary summary) {
+    if (offsets.costOffset() >= 0) {
+      data[offsets.costOffset()] = checkedByte(patch.cost(), "cost");
+      summary.cost++;
+    } else {
+      summary.skipped++;
+    }
+  }
+
+  private static void writeLevelEffect(
+      byte[] data,
+      int levelIndex,
+      LevelOffsets offsets,
+      SkillEffectRow effect,
+      PatchSummary summary) {
+    if ("Damage".equals(effect.type)) {
+      writeDamageEffect(data, levelIndex, offsets, effect, summary);
+    } else if (effect.isStatus()) {
+      writeStatusEffect(data, levelIndex, offsets, effect, summary);
+    }
+  }
+
+  private static void writeDamageEffect(
+      byte[] data,
+      int levelIndex,
+      LevelOffsets offsets,
+      SkillEffectRow effect,
+      PatchSummary summary) {
+    if (offsets.damageOffset() < 0 || effect.index < 0 || effect.index >= offsets.damageCount()) {
+      summary.skipped++;
+      return;
+    }
+    int offset =
+        levelIndex == 0
+            ? offsets.damageOffset() + effect.index * 3 + 1
+            : offsets.damageOffset() + effect.index * 2;
+    writeU16(data, offset, effect.value);
+    summary.damage++;
+  }
+
+  private static void writeStatusEffect(
+      byte[] data,
+      int levelIndex,
+      LevelOffsets offsets,
+      SkillEffectRow effect,
+      PatchSummary summary) {
+    if (offsets.statusOffset() < 0 || effect.index < 0 || effect.index >= offsets.statusCount()) {
+      summary.skipped++;
+      return;
+    }
+    int offset =
+        levelIndex == 0
+            ? offsets.statusOffset() + effect.index * 2 + 1
+            : offsets.statusOffset() + effect.index;
+    data[offset] = encodeSignedChance(effect.encodedValue());
+    summary.status++;
+  }
+
+  @Builder
+  @With
+  private record ParsedSkillLayout(List<LevelOffsets> levelOffsets, int nextOffset) {
+
+    public ParsedSkillLayout {
+      levelOffsets = levelOffsets == null ? Collections.emptyList() : levelOffsets;
+    }
+  }
+
+  @Builder
+  @With
+  private record ParsedBaseLevelLayout(
+      LevelOffsets offsets, int nextOffset, int damageEffectCount, int statusEffectCount) {}
+
+  @Builder
+  @With
+  private record ParsedLevelOverrideLayout(LevelOffsets offsets, int nextOffset) {}
 }

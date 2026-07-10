@@ -1,61 +1,48 @@
 package com.vddoh.editor;
 
-import java.awt.BorderLayout;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
-import java.awt.event.MouseEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.Serial;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.RowFilter;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.TableRowSorter;
-
-import static com.vddoh.editor.EditorSupport.*;
 
 final class SimpleNamedTableModel extends AbstractTableModel {
-    private final String kind;
-    private List<NamedRow> rows = new ArrayList<>();
-    SimpleNamedTableModel(String kind) { this.kind = kind; }
-    void setRows(List<NamedRow> rows) { this.rows = new ArrayList<>(rows); fireTableDataChanged(); }
-    public int getRowCount() { return rows.size(); }
-    public int getColumnCount() { return 3; }
-    public String getColumnName(int column) { return column == 0 ? "ID" : column == 1 ? kind : "Notes"; }
-    public Object getValueAt(int rowIndex, int columnIndex) {
-        NamedRow row = rows.get(rowIndex);
-        return columnIndex == 0 ? row.id : columnIndex == 1 ? row.name : row.notes;
+
+  @Serial private static final long serialVersionUID = -4956286318180790973L;
+
+  private final String kind;
+  private List<NamedRow> rows = new ArrayList<>();
+
+  SimpleNamedTableModel(String kind) {
+    this.kind = kind;
+  }
+
+  void setRows(List<NamedRow> rows) {
+    this.rows = new ArrayList<>(rows);
+    fireTableDataChanged();
+  }
+
+  @Override
+  public int getRowCount() {
+    return rows.size();
+  }
+
+  @Override
+  public int getColumnCount() {
+    return 3;
+  }
+
+  @Override
+  public String getColumnName(int column) {
+    if (column == 0) {
+      return "ID";
     }
+
+    return column == 1 ? kind : "Notes";
+  }
+
+  @Override
+  public Object getValueAt(int rowIndex, int columnIndex) {
+    NamedRow row = rows.get(rowIndex);
+    return columnIndex == 0 ? row.id() : columnIndex == 1 ? row.name() : row.notes();
+  }
 }
