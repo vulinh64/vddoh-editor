@@ -462,36 +462,38 @@ final class EditorSupport {
   static String slotLabel(int category, int subtype) {
     switch (category) {
       case 1:
-        return subtype == 0 ? "Ring" : "Necklace";
+        return subtype == 0 ? "Ring" : "Neck";
       case 2:
         if (subtype == 0) {
-          return "Main Armor";
+          return "Main Body Armor";
         }
         if (subtype == 1) {
-          return "Head Armor";
+          return "Head";
         }
         if (subtype == 4) {
           return "Boot";
         }
         return "Armor subtype " + subtype;
       case 3:
-        return WEAPON_SIDE;
+        return "Main Weapon";
       case 4:
-        return "Equipment subtype " + subtype;
+        return "Special";
       case 5:
-        return "Anytime Consumable";
+        return CONSUMABLE_ROW;
+      case 6:
+        return CONSUMABLE_ROW;
       case 7:
-        return "Rune/Modifier";
+        return "Runes";
       case 8:
         return "Text/Special";
       case 9:
-        return "Combat Consumable";
+        return "Battle-only Consumable";
       case 10:
-        return "Special item";
+        return "Special";
       case 12:
-        return "Quest/Special";
+        return "Special";
       default:
-        return "Category " + category;
+        return "Special";
     }
   }
 

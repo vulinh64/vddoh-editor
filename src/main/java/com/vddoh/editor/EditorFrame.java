@@ -70,19 +70,34 @@ final class EditorFrame extends JFrame {
     EQUIPMENT {
       @Override
       boolean includes(ItemRow row) {
-        return row.category == 1 || row.category == 2 || row.category == 3 || row.category == 7;
+        return row.category == 1 || row.category == 2 || row.category == 3;
       }
     },
-    CONSUMABLES {
+    RUNES {
       @Override
       boolean includes(ItemRow row) {
-        return row.category == 5 || row.category == 9;
+        return row.category == 7;
       }
     },
-    OTHER {
+    CONSUMABLE {
       @Override
       boolean includes(ItemRow row) {
-        return !EQUIPMENT.includes(row) && !CONSUMABLES.includes(row);
+        return row.category == 5 || row.category == 6;
+      }
+    },
+    BATTLE_CONSUMABLE {
+      @Override
+      boolean includes(ItemRow row) {
+        return row.category == 9;
+      }
+    },
+    SPECIAL {
+      @Override
+      boolean includes(ItemRow row) {
+        return !(EQUIPMENT.includes(row)
+            || RUNES.includes(row)
+            || CONSUMABLE.includes(row)
+            || BATTLE_CONSUMABLE.includes(row));
       }
     };
 
@@ -230,8 +245,12 @@ final class EditorFrame extends JFrame {
   private JPanel createItemsPanel() {
     JTabbedPane itemTabs = new JTabbedPane();
     itemTabs.addTab("Equipment", createFilteredItemsPanel("Equipment", ItemFilter.EQUIPMENT));
-    itemTabs.addTab("Consumables", createFilteredItemsPanel("Consumables", ItemFilter.CONSUMABLES));
-    itemTabs.addTab("Other", createFilteredItemsPanel("Other Items", ItemFilter.OTHER));
+    itemTabs.addTab("Runes", createFilteredItemsPanel("Runes", ItemFilter.RUNES));
+    itemTabs.addTab("Consumable", createFilteredItemsPanel("Consumable", ItemFilter.CONSUMABLE));
+    itemTabs.addTab(
+        "Battle-only Consumable",
+        createFilteredItemsPanel("Battle-only Consumable", ItemFilter.BATTLE_CONSUMABLE));
+    itemTabs.addTab("Special", createFilteredItemsPanel("Special", ItemFilter.SPECIAL));
 
     JPanel panel = new JPanel(new BorderLayout());
     panel.add(itemTabs, BorderLayout.CENTER);
@@ -327,14 +346,7 @@ final class EditorFrame extends JFrame {
 
   private static String[] equipmentSlotLabels() {
     return new String[] {
-      ALL_EQUIPMENT,
-      "Weapon",
-      "Head Armor",
-      "Necklace",
-      "Ring",
-      "Main Armor",
-      "Boot",
-      "Rune/Modifier"
+      ALL_EQUIPMENT, "Head", "Neck", "Ring", "Main Body Armor", "Main Weapon", "Boot"
     };
   }
 

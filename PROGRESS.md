@@ -13,6 +13,9 @@ This project contains the current Swing data editor and reverse-engineering note
 - [x] Added Maven wrapper files: `mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`.
 - [x] Added `pom.xml` targeting JDK 25.
 - [x] Added `run-vddoh-editor.cmd` to run `target/vddoh-data-editor-1.0.0.jar`.
+- [x] Reduced Windows launchers to two explicit build-and-run scripts: `build-and-run-vddoh-editor-swing.cmd` for the legacy Swing shaded JAR and `build-and-run-vddoh-editor-fx.cmd` for the JavaFX Maven launcher.
+- [x] Added an IntelliJ Maven run configuration `VDDOH JavaFX (Maven)` because plain IntelliJ Application runs can miss the OpenJFX module/runtime path and fail with "JavaFX runtime components are missing".
+- [x] Added JavaFX resistance-overflow patch control. FX now mirrors Swing's ORIGINAL/PATCHED/UNKNOWN state behavior and can build the `g.class` patch through `EditorPatchService`.
 - [x] Updated `build-with-jdk.cmd` to delegate to the Maven wrapper so dependency resolution, annotation processing, resources, Java ME API unpacking, and shading stay in one build path.
 - [x] Moved and updated `VDDOH-STATS-MECHANISM.md`.
 - [x] Confirmed `build-with-jdk.cmd` builds the target JAR.
@@ -32,6 +35,13 @@ This project contains the current Swing data editor and reverse-engineering note
 - [x] Improved Item effect previews: category-5 consumables now show packed stat boosts, status-use arrays, and use effect IDs as consumable effects; category-9/10 skill items now show their linked skill from `byte_o/byte_p`.
 - [x] Split the Items tab into filtered Equipment, Consumables, and Other views. Equipment can be further filtered by Weapon, Head Armor, Necklace, Ring, Main Armor, Boot, and Rune/Modifier. Consumables now include both anytime consumables and combat-only skill-backed consumables.
 - [x] Added double-click navigation from an item `Linked skill` effect row to the Skills tab, using the selected item's full name as the skill search text.
+- [x] Started JavaFX migration Phase 1 on a parallel launcher. Swing remains the default executable JAR; JavaFX currently provides a read-only Items browser with Equipment, Consumables, Other, equipment slot filtering, consumable mode filtering, decoded effect details, and pending linked-skill navigation status.
+- [x] Updated item grouping to Equipment, Runes, Consumable, Battle-only Consumable, and Special. Equipment now means only Head, Neck, Ring, Main Body Armor, Main Weapon, and Boot. Category 6 permanent-use items such as Ankh of Life/Magic are Consumable, not Special.
+- [x] Started JavaFX migration Phase 2 with conservative item editing: JavaFX can edit item Price, Icon, HP Restore/Effect, and Resource Restore/Effect, then build an item-only patched JAR through the shared `EditorPatchService` and existing `ItemDatPatcher`.
+- [x] Added a read-only JavaFX Skills tab backed by immutable skill snapshots. Linked-skill item actions now switch to Skills and set the search text to the item full name, selecting the linked skill level when the filtered row is visible.
+- [x] Completed the first full JavaFX browsing surface: Skills, Talents, Heroes, Items, Monsters, and Statuses now load from immutable snapshot records. Swing remains available while JavaFX write parity is expanded through the shared patch service.
+- [x] The Maven shaded JAR still uses Swing as its manifest main class because JavaFX native/runtime-image packaging is a separate distribution step; use the explicit build-and-run scripts for UI selection.
+- [x] Added JavaFX edit/build parity for confirmed safe fields: skill costs/effect values, talent scalar/link fields, hero growth/level/crit fields, item safe top-level fields, monster reward/core-stat fields, and status duration/chance/icon fields. JavaFX edit carriers use records with `@Builder`/`@With`; UI view-models are records with JavaFX properties only at the table edge.
 - [x] Editable Monsters table v1: names read-only; confirmed EXP, Filar, Death Value, Effect ID, and STR/SPI/VIT/SPD-like core stat bytes editable. HP/combat previews recalculate from the core bytes; drops/actions/effects remain read-only.
 - [x] Editable Statuses table for safe status fields.
 - [x] Search support across Skills, Heroes, Items, Monsters, and Statuses.

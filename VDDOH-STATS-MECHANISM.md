@@ -473,6 +473,7 @@ There are at least two consumable paths:
 
 ```text
 Category 5  anytime/direct consumable
+Category 6  permanent non-battle consumable
 Category 9  combat-only skill-backed consumable
 ```
 
@@ -487,6 +488,10 @@ short_arr_a status gate/check array observed in the consumable use path
 short_arr_b status apply/remove array observed in the consumable use path
 byte_q      use visual/effect id
 ```
+
+Category `6` includes permanent non-battle consumables such as Ankh of Life and
+Ankh of Magic. In-game, these are not battle items; each use permanently raises
+max HP or max resource by `5`.
 
 Category `9` items, including Troll Elixir and Might Potion, are combat-only
 consumables that dispatch through a linked skill. Their linked skill is stored
