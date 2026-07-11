@@ -114,6 +114,7 @@ In `src/main/java/com/vddoh/editor/`:
 | `VddohDataEditor.java` | Main class only. |
 | `EditorFrame.java` | Swing UI coordinator and build/load actions. |
 | `EditorSupport.java` | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers. |
+| `EditorPatchService.java` | Shared JavaFX patch build service. `buildFullPatch(PatchBuildRequest)` writes game.dat, item.dat, and optional `g.class` replacements in one cumulative JAR operation. |
 | `GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
 | `GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
 | `GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |

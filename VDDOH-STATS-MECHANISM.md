@@ -473,6 +473,7 @@ There are at least two consumable paths:
 
 ```text
 Category 5  anytime/direct consumable
+Category 6  permanent non-battle consumable
 Category 9  combat-only skill-backed consumable
 ```
 
@@ -487,6 +488,10 @@ short_arr_a status gate/check array observed in the consumable use path
 short_arr_b status apply/remove array observed in the consumable use path
 byte_q      use visual/effect id
 ```
+
+Category `6` includes permanent non-battle consumables such as Ankh of Life and
+Ankh of Magic. In-game, these are not battle items; each use permanently raises
+max HP or max resource by `5`.
 
 Category `9` items, including Troll Elixir and Might Potion, are combat-only
 consumables that dispatch through a linked skill. Their linked skill is stored
@@ -602,7 +607,9 @@ Input JAR has an unknown g.class layout:
 ```
 
 When enabled and checked during `Build Patched JAR`, the editor rewrites `g.class`
-inside the output JAR. The current implementation is a hybrid patcher for hero
+inside the output JAR. In JavaFX, this is part of the combined patch build, so
+class, `game.dat`, and `item.dat` changes are written together instead of through
+separate output passes. The current implementation is a hybrid patcher for hero
 class `g` / renamed `Hero`: it uses JDK 25's Class-File API to confirm exactly
 one semantic match in `g.b()V`, then applies a byte-minimal raw replacement
 against the confirmed byte pattern.
