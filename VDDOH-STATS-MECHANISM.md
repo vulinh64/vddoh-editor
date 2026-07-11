@@ -657,6 +657,10 @@ EXP         0..4095
 Filar       0..4095
 Death Value 0..127
 Effect ID   0..255
+STR-like    0..127
+SPI-like    0..127
+VIT-like    0..127
+SPD-like    0..127
 ```
 
 `EXP`, `Filar`, and `Death Value` are the fixed packed scalar block immediately
@@ -685,7 +689,31 @@ confirms `Death Value` is separate from battle-result reward totals.
 monster field ordinal `16`. It is used by monster death-side effect handling,
 not by the battle-result EXP/Filar totals.
 
-The editor also shows read-only monster stat previews:
+The four core monster stat bytes are 7-bit values packed across bytes `+4..+7`
+of the 13-byte monster tail:
+
+```text
+STR-like = tail[4] bits 7..1
+SPI-like = tail[4] bit 0 + tail[5] bits 7..2
+VIT-like = tail[5] bits 1..0 + tail[6] bits 7..3
+SPD-like = tail[6] bits 2..0 + tail[7] bits 7..4
+```
+
+The editor now writes only those bit ranges and preserves the neighboring packed
+fields in the same bytes.
+
+Confirmed in-game test:
+
+```text
+Ryan (1), STR/SPI/VIT/SPD-like = 1/1/1/1
+Observed HP = 12
+Formula HP = ((1 * 70 + 1 * 30) * 12 / 100) = 12
+```
+
+This confirms that at least the STR/VIT core-stat write path and HP preview
+formula match runtime behavior.
+
+The editor also shows monster stat previews:
 
 ```text
 Base HP

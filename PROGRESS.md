@@ -28,7 +28,7 @@ This project contains the current Swing data editor and reverse-engineering note
 - [x] Editable Heroes table for natural stat growth, level cap, base crit chance, and base crit damage.
 - [x] Read-only Hero previews for base derived stats and core stats at level cap.
 - [x] Editable Items table for safe top-level fields and decoded effect previews.
-- [x] Editable Monsters table v1: names read-only, confirmed EXP and Filar rewards editable, Death Value and Effect ID editable, HP/combat/drop-related fields visible as read-only reflected previews.
+- [x] Editable Monsters table v1: names read-only; confirmed EXP, Filar, Death Value, Effect ID, and STR/SPI/VIT/SPD-like core stat bytes editable. HP/combat previews recalculate from the core bytes; drops/actions/effects remain read-only.
 - [x] Editable Statuses table for safe status fields.
 - [x] Search support across Skills, Heroes, Items, Monsters, and Statuses.
 - [x] Build patched JAR by replacing modified entries.
@@ -72,7 +72,8 @@ Bytecode tooling direction:
 - [ ] Confirm patched `g.class` detection by loading an already-patched output JAR back into the editor.
 - [ ] Add a dedicated `Class Patches` tab if more bytecode patches are added.
 - [x] Consider replacing raw byte-pattern class patching with JDK 25 Class-File API; decided on hybrid semantic detector plus byte-minimal raw writer for now.
-- [ ] Expand Monster editing beyond v1: decode/write packed HP, attack, defense, resistances, drops, and AI/skills once the monster tail and variable arrays are mapped safely.
+- [ ] Continue in-game testing monster STR/SPI/VIT/SPD-like edits for resource/attack/defense/move preview matches. HP is confirmed with Ryan (1): setting all four core stats to `1` produced `12 HP`.
+- [ ] Expand Monster editing beyond v1: decode/write resistances, drops, and AI/skills once the variable arrays are mapped safely.
 - [ ] Expand Item editing for multi-effect rows rather than only top-level safe fields.
 - [ ] Add explicit patch validation reports before writing output JAR.
 - [ ] Add unit tests or small command-line verifier for patchers.

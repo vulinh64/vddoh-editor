@@ -5,4 +5,4 @@ import lombok.With;
 
 @Builder
 @With
-record MonsterOffsets(int fixedOffset, int effectOffset) {}
+record MonsterOffsets(int fixedOffset, int tailOffset, int effectOffset) {}

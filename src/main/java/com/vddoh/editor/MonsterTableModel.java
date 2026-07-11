@@ -60,6 +60,10 @@ final class MonsterTableModel extends AbstractTableModel {
                 .filar(row.filar())
                 .deathValue(row.deathValue())
                 .effectId(row.effectId())
+                .strength(row.strength())
+                .spirit(row.spirit())
+                .vitality(row.vitality())
+                .speed(row.speed())
                 .build());
       }
     }
@@ -97,10 +101,13 @@ final class MonsterTableModel extends AbstractTableModel {
     if (column >= 6 && column <= 10) {
       return "Read-only derived runtime preview calculated from the reflected monster core stat bytes.";
     }
-    if (column >= 11 && column <= 19) {
+    if (column >= 11 && column <= 14) {
+      return "Editable 7-bit core stat byte. Valid range: 0..127. Base HP/Resource/Attack/Defense/Move previews are derived from these values.";
+    }
+    if (column >= 15 && column <= 20) {
       return "Read-only reflected monster attribute. Several values come from a packed tail that needs more decoding before safe writes.";
     }
-    if (column >= 20 && column <= 22) {
+    if (column >= 21 && column <= 23) {
       return "Read-only decoded array length for monster behavior, effects, or drops.";
     }
     return null;
@@ -108,7 +115,7 @@ final class MonsterTableModel extends AbstractTableModel {
 
   @Override
   public boolean isCellEditable(int row, int column) {
-    return column >= 2 && column <= 5;
+    return (column >= 2 && column <= 5) || (column >= 11 && column <= 14);
   }
 
   @Override
@@ -164,6 +171,22 @@ final class MonsterTableModel extends AbstractTableModel {
       case 5:
         checkedRange(parsed, 255, "Effect ID");
         rows.set(rowIndex, row.withEffectId(parsed));
+        break;
+      case 11:
+        checkedRange(parsed, 127, "STR-like");
+        rows.set(rowIndex, row.withStrength(parsed));
+        break;
+      case 12:
+        checkedRange(parsed, 127, "SPI-like");
+        rows.set(rowIndex, row.withSpirit(parsed));
+        break;
+      case 13:
+        checkedRange(parsed, 127, "VIT-like");
+        rows.set(rowIndex, row.withVitality(parsed));
+        break;
+      case 14:
+        checkedRange(parsed, 127, "SPD-like");
+        rows.set(rowIndex, row.withSpeed(parsed));
         break;
       default:
         break;

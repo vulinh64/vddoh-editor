@@ -19,6 +19,7 @@ final class PatchSummary {
   int heroSeeds;
   int heroResistOverflow;
   int monsterHeader;
+  int monsterCoreStats;
   int monsterEffect;
   int talentAmount;
   int skipped;
@@ -64,6 +65,9 @@ final class PatchSummary {
     }
     if (monsterHeader != 0) {
       parts.add("monsterHeader=" + monsterHeader);
+    }
+    if (monsterCoreStats != 0) {
+      parts.add("monsterCoreStats=" + monsterCoreStats);
     }
     if (monsterEffect != 0) {
       parts.add("monsterEffect=" + monsterEffect);

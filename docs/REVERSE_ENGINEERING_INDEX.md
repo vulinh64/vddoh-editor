@@ -117,7 +117,7 @@ In `src/main/java/com/vddoh/editor/`:
 | `GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
 | `GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
 | `GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |
-| `GameDatMonsterPatcher.java` | Writes conservative monster v1 fields: EXP, Filar, Death Value, and tail Effect ID. |
+| `GameDatMonsterPatcher.java` | Writes conservative monster v1 fields: EXP, Filar, Death Value, tail Effect ID, and packed STR/SPI/VIT/SPD-like core stat bytes. |
 | `ItemDatPatcher.java` | Writes safe item top-level fields. |
 | `GameDatStatusPatcher.java` | Writes safe status fields. |
 | `ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow; uses Class-File API semantic detection plus byte-minimal raw replacement. |

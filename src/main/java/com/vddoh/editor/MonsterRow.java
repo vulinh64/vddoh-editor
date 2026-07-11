@@ -13,6 +13,10 @@ record MonsterRow(
     int originalFilar,
     int originalDeathValue,
     int originalEffectId,
+    int originalStrength,
+    int originalSpirit,
+    int originalVitality,
+    int originalSpeed,
     int experience,
     int filar,
     int deathValue,
@@ -60,6 +64,10 @@ record MonsterRow(
         .originalFilar(filar)
         .originalDeathValue(deathValue)
         .originalEffectId(effectId)
+        .originalStrength(strength)
+        .originalSpirit(spirit)
+        .originalVitality(vitality)
+        .originalSpeed(speed)
         .experience(experience)
         .filar(filar)
         .deathValue(deathValue)
@@ -77,8 +85,7 @@ record MonsterRow(
         .actionCount(actionCount)
         .effectCount(effectCount)
         .dropCount(dropCount)
-        .notes(
-            "editable: EXP, Filar, Death Value, Effect ID; base stats are derived from core stat bytes")
+        .notes("editable: EXP, Filar, Death Value, Effect ID, STR/SPI/VIT/SPD core stat bytes")
         .build();
   }
 
@@ -106,13 +113,21 @@ record MonsterRow(
     return experience != originalExperience
         || filar != originalFilar
         || deathValue != originalDeathValue
-        || effectId != originalEffectId;
+        || effectId != originalEffectId
+        || strength != originalStrength
+        || spirit != originalSpirit
+        || vitality != originalVitality
+        || speed != originalSpeed;
   }
 
   MonsterRow reset() {
     return withExperience(originalExperience)
         .withFilar(originalFilar)
         .withDeathValue(originalDeathValue)
-        .withEffectId(originalEffectId);
+        .withEffectId(originalEffectId)
+        .withStrength(originalStrength)
+        .withSpirit(originalSpirit)
+        .withVitality(originalVitality)
+        .withSpeed(originalSpeed);
   }
 }

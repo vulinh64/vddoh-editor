@@ -112,6 +112,7 @@ final class EditorFrame extends JFrame {
       loadData();
     } else {
       status.setText("Choose an input JAR, then click Load Data.");
+      System.exit(0);
     }
   }
 
@@ -152,8 +153,6 @@ final class EditorFrame extends JFrame {
             });
 
     JTextField search = new JTextField(24);
-    JButton searchButton = new JButton(SEARCH_LABEL);
-    JButton clearButton = new JButton(CLEAR_LABEL);
     Runnable applySearch =
         () -> {
           String query = search.getText().trim().toLowerCase();
@@ -177,25 +176,7 @@ final class EditorFrame extends JFrame {
           status.setText(
               "Skills shown: " + levels.getRowCount() + " / " + skillsModel.getRowCount());
         };
-    search.addKeyListener(
-        new KeyAdapter() {
-          @Override
-          public void keyReleased(KeyEvent e) {
-            applySearch.run();
-          }
-        });
-    searchButton.addActionListener(_ -> applySearch.run());
-    clearButton.addActionListener(
-        _ -> {
-          search.setText(StringUtils.EMPTY);
-          applySearch.run();
-        });
-
-    JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    searchPanel.add(new JLabel(SEARCH_LABEL));
-    searchPanel.add(search);
-    searchPanel.add(searchButton);
-    searchPanel.add(clearButton);
+    JPanel searchPanel = createSearchPanel(search, applySearch);
 
     JSplitPane split =
         new JSplitPane(
@@ -233,8 +214,6 @@ final class EditorFrame extends JFrame {
             });
 
     JTextField search = new JTextField(24);
-    JButton searchButton = new JButton(SEARCH_LABEL);
-    JButton clearButton = new JButton(CLEAR_LABEL);
     Runnable applySearch =
         () -> {
           String query = search.getText().trim().toLowerCase();
@@ -256,25 +235,7 @@ final class EditorFrame extends JFrame {
           }
           status.setText("Items shown: " + items.getRowCount() + " / " + itemsModel.getRowCount());
         };
-    search.addKeyListener(
-        new KeyAdapter() {
-          @Override
-          public void keyReleased(KeyEvent e) {
-            applySearch.run();
-          }
-        });
-    searchButton.addActionListener(_ -> applySearch.run());
-    clearButton.addActionListener(
-        _ -> {
-          search.setText(StringUtils.EMPTY);
-          applySearch.run();
-        });
-
-    JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    searchPanel.add(new JLabel(SEARCH_LABEL));
-    searchPanel.add(search);
-    searchPanel.add(searchButton);
-    searchPanel.add(clearButton);
+    JPanel searchPanel = createSearchPanel(search, applySearch);
 
     JSplitPane split =
         new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(items), new JScrollPane(effects));
@@ -300,8 +261,6 @@ final class EditorFrame extends JFrame {
     table.setRowSorter(sorter);
 
     JTextField search = new JTextField(24);
-    JButton searchButton = new JButton(SEARCH_LABEL);
-    JButton clearButton = new JButton(CLEAR_LABEL);
     Runnable applySearch =
         () -> {
           String query = search.getText().trim().toLowerCase();
@@ -323,6 +282,17 @@ final class EditorFrame extends JFrame {
           status.setText(
               "%s shown: %d / %d".formatted(label, table.getRowCount(), model.getRowCount()));
         };
+    JPanel searchPanel = createSearchPanel(search, applySearch);
+
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.add(searchPanel, BorderLayout.NORTH);
+    panel.add(new JScrollPane(table), BorderLayout.CENTER);
+    return panel;
+  }
+
+  private static JPanel createSearchPanel(JTextField search, Runnable applySearch) {
+    JButton searchButton = new JButton(SEARCH_LABEL);
+    JButton clearButton = new JButton(CLEAR_LABEL);
     search.addKeyListener(
         new KeyAdapter() {
           @Override
@@ -342,11 +312,7 @@ final class EditorFrame extends JFrame {
     searchPanel.add(search);
     searchPanel.add(searchButton);
     searchPanel.add(clearButton);
-
-    JPanel panel = new JPanel(new BorderLayout());
-    panel.add(searchPanel, BorderLayout.NORTH);
-    panel.add(new JScrollPane(table), BorderLayout.CENTER);
-    return panel;
+    return searchPanel;
   }
 
   private static JTable monsterJTable(MonsterTableModel model) {
@@ -679,20 +645,19 @@ final class EditorFrame extends JFrame {
         PatchSummary classSummary = ResistanceOverflowClassPatcher.patch(heroClass);
         replacements.put(CLASS_G, heroClass);
         summaries.add(
-            "class: resistanceOverflow="
-                + classSummary.heroResistOverflow
-                + ", skipped="
-                + classSummary.skipped);
+            "class: resistanceOverflow=%d, skipped=%d"
+                .formatted(classSummary.heroResistOverflow, classSummary.skipped));
       }
       replaceJarEntries(inputJar, outputJar, replacements);
       String summary = joinLines(summaries);
-      status.setText("Wrote " + outputJar + " (" + summary.replace('\n', ';') + ")");
+      status.setText("Wrote %s (%s)".formatted(outputJar, summary.replace('\n', ';')));
       log.info(
           "Wrote patched JAR {} with replacements {} and summary {}",
           outputJar,
           replacements.keySet(),
           summary);
-      JOptionPane.showMessageDialog(this, "Patched JAR written:\n" + outputJar + "\n\n" + summary);
+      JOptionPane.showMessageDialog(
+          this, "Patched JAR written:\n%s\n\n%s".formatted(outputJar, summary));
     } catch (Exception ex) {
       showError(this, ex);
     }

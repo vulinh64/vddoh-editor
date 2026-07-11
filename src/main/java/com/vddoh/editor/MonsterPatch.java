@@ -5,4 +5,13 @@ import lombok.With;
 
 @Builder
 @With
-record MonsterPatch(int monsterId, int experience, int filar, int deathValue, int effectId) {}
+record MonsterPatch(
+    int monsterId,
+    int experience,
+    int filar,
+    int deathValue,
+    int effectId,
+    int strength,
+    int spirit,
+    int vitality,
+    int speed) {}
