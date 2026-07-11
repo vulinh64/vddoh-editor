@@ -6,14 +6,14 @@ This project contains the current Swing data editor and reverse-engineering note
 
 - [x] Moved the editor into a Maven-style project: `vddoh-editor/`.
 - [x] Main source moved to a Maven-style Java package under `src/main/java/com/vddoh/editor/`.
-- [x] Removed the temporary Java ME `Font` source stub; real Java ME API classes now come from `me-lib`.
+- [x] Kept a minimal desktop-safe Java ME `Font` shim because the bundled MIDP API returns `null` from font factory methods and breaks original game class initialization.
 - [x] Added minimal `me-lib/` Java ME API jars for reflection-loading original game classes: `cldc11.jar`, `midp21.jar`, and `jsr135.jar`.
 - [x] Removed runtime dependence on external installs. The built editor JAR now embeds the minimal Java ME API classes and can also use repository-local `me-lib/*.jar` during development.
 - [x] Maven packaging now creates a self-contained executable JAR with application dependencies and minimal Java ME API classes bundled.
 - [x] Added Maven wrapper files: `mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`.
 - [x] Added `pom.xml` targeting JDK 25.
 - [x] Added `run-vddoh-editor.cmd` to run `target/vddoh-data-editor-1.0.0.jar`.
-- [x] Added `build-with-jdk.cmd` as a no-Maven fallback build.
+- [x] Updated `build-with-jdk.cmd` to delegate to the Maven wrapper so dependency resolution, annotation processing, resources, Java ME API unpacking, and shading stay in one build path.
 - [x] Moved and updated `VDDOH-STATS-MECHANISM.md`.
 - [x] Confirmed `build-with-jdk.cmd` builds the target JAR.
 - [x] Confirmed `mvnw.cmd -q -DskipTests package` builds the target JAR on JDK 25.
@@ -32,10 +32,12 @@ This project contains the current Swing data editor and reverse-engineering note
 - [x] Editable Statuses table for safe status fields.
 - [x] Search support across Skills, Heroes, Items, Monsters, and Statuses.
 - [x] Build patched JAR by replacing modified entries.
+- [x] Added an output JAR `View` button that opens the patched-output location; Windows selects the file in Explorer when it exists.
 - [x] Optional `Patch resistance overflow` checkbox for the confirmed resistance byte overflow bug.
 - [x] Split the former monolithic `VddohDataEditor.java` into package-scoped classes for UI, table models, data rows, patch requests, patchers, offsets, and shared support helpers.
 - [x] Ran a pre-Sonar static cleanup pass: removed stale generated imports, replaced wildcard static imports with specific imports, replaced `printStackTrace()` with logging, and removed the hard-coded local runtime path.
 - [x] Added Lombok and Apache Commons Lang3, then started the JDK 25 refactor style pass with records, `@Builder`, and `@With` where the data shape is a good fit.
+- [x] Added SLF4J 2.0.18 and Logback 1.5.37 for editor diagnostics. Default logging is `INFO` so load/build/patch breadcrumbs are visible; run with `-Dvddoh.log.level=WARN` to quiet it down.
 - [x] Converted patch DTOs and several offset/read-model carriers to Lombok-backed records. Record construction should prefer builders or builder-backed factories over positional canonical constructor calls.
 - [x] Converted `MonsterRow` to the first immutable editable-row prototype: Swing edits replace the row with `with...` copies instead of mutating fields directly.
 
@@ -112,7 +114,7 @@ cd D:\Games\JAR\JAR\vddoh-editor
 mvnw.cmd -q -DskipTests package
 ```
 
-Fallback build without Maven:
+Compatibility build wrapper:
 
 ```cmd
 cd D:\Games\JAR\JAR\vddoh-editor

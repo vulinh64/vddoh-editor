@@ -88,7 +88,11 @@
                         <configuration>
                             <target>
                                 <unzip src="${project.basedir}/me-lib/cldc11.jar" dest="${project.build.outputDirectory}"/>
-                                <unzip src="${project.basedir}/me-lib/midp21.jar" dest="${project.build.outputDirectory}"/>
+                                <unzip src="${project.basedir}/me-lib/midp21.jar" dest="${project.build.outputDirectory}">
+                                    <patternset>
+                                        <exclude name="javax/microedition/lcdui/Font.class"/>
+                                    </patternset>
+                                </unzip>
                                 <unzip src="${project.basedir}/me-lib/jsr135.jar" dest="${project.build.outputDirectory}"/>
                             </target>
                         </configuration>

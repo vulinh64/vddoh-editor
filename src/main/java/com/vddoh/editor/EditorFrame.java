@@ -8,6 +8,7 @@ import static com.vddoh.editor.EditorSupport.replaceJarEntries;
 import static com.vddoh.editor.EditorSupport.showError;
 
 import java.awt.BorderLayout;
+import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.KeyAdapter;
@@ -69,7 +70,7 @@ final class EditorFrame extends JFrame {
     top.add(pathRow("Input JAR", jarPath, true));
     top.add(pathRow("Input game.dat", gameDatPath, false));
     top.add(pathRow("Input item.dat", itemDatPath, false));
-    top.add(pathRow("Output JAR", outputJarPath, false));
+    top.add(pathRow("Output JAR", outputJarPath, false, true));
     add(top, BorderLayout.NORTH);
 
     JTabbedPane tabs = new JTabbedPane();
@@ -407,9 +408,14 @@ final class EditorFrame extends JFrame {
   }
 
   private JPanel pathRow(String label, JTextField field, boolean alsoGameDat) {
+    return pathRow(label, field, alsoGameDat, false);
+  }
+
+  private JPanel pathRow(String label, JTextField field, boolean alsoGameDat, boolean includeView) {
     JPanel row = new JPanel(new BorderLayout(6, 0));
     row.add(new JLabel(label), BorderLayout.WEST);
     row.add(field, BorderLayout.CENTER);
+    JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
     JButton browse = new JButton("...");
     browse.addActionListener(
         _ -> {
@@ -422,8 +428,63 @@ final class EditorFrame extends JFrame {
             }
           }
         });
-    row.add(browse, BorderLayout.EAST);
+    actions.add(browse);
+    if (includeView) {
+      JButton view = new JButton("View");
+      view.addActionListener(_ -> viewOutputJar());
+      actions.add(view);
+    }
+    row.add(actions, BorderLayout.EAST);
     return row;
+  }
+
+  private void viewOutputJar() {
+    try {
+      Path outputJar = Path.of(outputJarPath.getText()).toAbsolutePath().normalize();
+      revealInFileManager(outputJar);
+    } catch (Exception ex) {
+      showError(this, ex);
+    }
+  }
+
+  private void revealInFileManager(Path target) throws IOException {
+    Path parent = target.getParent();
+    if (parent == null) {
+      parent = Path.of(".").toAbsolutePath().normalize();
+    }
+    Files.createDirectories(parent);
+    String osName = System.getProperty("os.name", StringUtils.EMPTY).toLowerCase();
+    log.info("Opening output JAR location for {} on {}", target, osName);
+    if (osName.contains("win")) {
+      startFileManager(
+          "explorer.exe", Files.exists(target) ? "/select," + target : parent.toString());
+      return;
+    }
+    if (osName.contains("mac")) {
+      if (Files.exists(target)) {
+        startFileManager("open", "-R", target.toString());
+      } else {
+        startFileManager("open", parent.toString());
+      }
+      return;
+    }
+    try {
+      startFileManager("xdg-open", parent.toString());
+    } catch (IOException ex) {
+      openWithDesktop(parent, ex);
+    }
+  }
+
+  private void startFileManager(String... command) throws IOException {
+    new ProcessBuilder(command).start();
+  }
+
+  private void openWithDesktop(Path directory, IOException originalFailure) throws IOException {
+    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+      Desktop.getDesktop().open(directory.toFile());
+      return;
+    }
+    throw originalFailure;
   }
 
   private void setInputJar(Path inputJar) {

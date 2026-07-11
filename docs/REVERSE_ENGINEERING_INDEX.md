@@ -165,6 +165,10 @@ parse class -> structurally match one known method/instruction shape
 ## Java Refactor Direction
 
 The current source uses JDK 25 plus Lombok and Apache Commons Lang3.
+Diagnostics use Lombok `@Slf4j`, SLF4J 2.0.18, and Logback 1.5.37.
+The default runtime level is `INFO` so load/build/patch breadcrumbs are visible
+during reverse-engineering sessions. Launch with `-Dvddoh.log.level=WARN` when
+you want quieter output.
 
 Guidelines for new editor data classes:
 
@@ -192,3 +196,10 @@ The Maven build unpacks those API classes into the executable editor JAR, so
 neighboring `me-lib` directory. During development, `EditorSupport` also adds
 local `me-lib/*.jar` if the directory exists. Do not add runtime fallback logic
 to external installations; the project should remain self-contained.
+
+Exception: keep the local `javax.microedition.lcdui.Font` shim. The `Font.class`
+inside `midp21.jar` returns `null` from `getFont(...)`/`getDefaultFont()`, which
+breaks the original `j` class static initializer during reflection loading.
+The Maven unpack excludes only `javax/microedition/lcdui/Font.class` from
+`midp21.jar` so the local shim wins while the rest of MIDP still comes from
+`me-lib`.

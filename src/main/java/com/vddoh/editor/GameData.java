@@ -223,8 +223,7 @@ final class GameData {
               shortValue(raw(monster, 34)),
               actions.length,
               effects.length,
-              drops.length
-          ));
+              drops.length));
     }
   }
 

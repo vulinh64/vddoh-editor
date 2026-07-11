@@ -21,7 +21,7 @@ Preferred:
 mvnw.cmd -q -DskipTests package
 ```
 
-Fallback when Maven/network is unavailable:
+Compatibility wrapper that runs the Maven build:
 
 ```cmd
 build-with-jdk.cmd

@@ -646,7 +646,9 @@ final class EditorSupport {
   static void addJavaMeLibraries(List<URL> urls) {
     Path javaMeLibraryDirectory = Path.of(ME_LIB_INTERNAL);
     if (!Files.isDirectory(javaMeLibraryDirectory)) {
-      log.info("Local Java ME library directory {} does not exist; using bundled classes", javaMeLibraryDirectory);
+      log.info(
+          "Local Java ME library directory {} does not exist; using bundled classes",
+          javaMeLibraryDirectory);
       return;
     }
     try (var paths = Files.list(javaMeLibraryDirectory)) {
