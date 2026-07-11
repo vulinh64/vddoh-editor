@@ -1,0 +1,17 @@
+package com.vddoh.editor.data;
+
+import lombok.Builder;
+import lombok.With;
+
+@Builder
+@With
+public record MonsterEdit(
+    int monsterId,
+    int experience,
+    int filar,
+    int deathValue,
+    int effectId,
+    int strength,
+    int spirit,
+    int vitality,
+    int speed) {}

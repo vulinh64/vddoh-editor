@@ -95,7 +95,7 @@ Phase 1 instead.
 Framework-neutral data and patch classes live under `com.vddoh.editor`:
 
 - Rows: `SkillLevelRow`, `SkillEffectRow`, `TalentRow`, `HeroRow`, `ItemRow`,
-  `ItemEffectRow`, `MonsterRow`, `StatusRow`, `NamedRow`
+  `ItemEffectRow`, `MonsterRow`, `StatusRow`
 - Patch DTOs: `SkillPatch`, `TalentPatch`, `HeroPatch`, `ItemPatch`,
   `MonsterPatch`, `StatusPatch`
 - Offsets/carriers: `LevelOffsets`, `TalentOffsets`, `HeroOffsets`,
