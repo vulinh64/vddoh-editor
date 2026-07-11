@@ -44,6 +44,10 @@ final class ItemTableModel extends AbstractTableModel {
     return rowIndex >= 0 && rowIndex < rows.size() ? rows.get(rowIndex).effects : new ArrayList<>();
   }
 
+  ItemRow row(int rowIndex) {
+    return rows.get(rowIndex);
+  }
+
   boolean matchesSearch(int rowIndex, String query) {
     if (rowIndex < 0 || rowIndex >= rows.size()) {
       return false;

@@ -272,44 +272,47 @@ final class EditorSupport {
     return names;
   }
 
-  static List<ItemEffectRow> decodeItemEffects(Object item, int category, String[] statusNames) {
+  static List<ItemEffectRow> decodeItemEffects(
+      Object item, int category, String[] statusNames, String[] skillNames) {
     List<ItemEffectRow> rows = new ArrayList<>();
     int hpRestore = intValue(raw(item, 21));
     int resourceRestore = intValue(raw(item, 22));
     if (hpRestore > 0) {
       rows.add(
           ItemEffectRow.of(
-              CONSUMABLE_ROW,
-              "Restore HP",
+              category == 5 ? CONSUMABLE_ROW : EQUIPMENT,
+              category == 5 ? "HP effect" : "Restore HP",
               "HP",
               String.valueOf(hpRestore),
-              StringUtils.EMPTY,
+              category == 5 ? "battle consumable" : StringUtils.EMPTY,
               "short_g"));
     }
     if (resourceRestore > 0) {
       rows.add(
           ItemEffectRow.of(
-              CONSUMABLE_ROW,
-              "Restore Resource",
+              category == 5 ? CONSUMABLE_ROW : EQUIPMENT,
+              category == 5 ? "Resource effect" : "Restore Resource",
               "Blood/Soul",
               String.valueOf(resourceRestore),
-              StringUtils.EMPTY,
+              category == 5 ? "battle consumable" : StringUtils.EMPTY,
               "short_h"));
     }
 
-    appendPackedStat(
-        rows, category == 7 ? RUNE_EQUIPMENT : EQUIPMENT, 0, shortValue(raw(item, 8)), "short_c");
-    appendPackedStat(
-        rows, category == 7 ? RUNE_EQUIPMENT : EQUIPMENT, 2, shortValue(raw(item, 9)), "short_d");
-    appendPackedStat(
-        rows, category == 7 ? RUNE_EQUIPMENT : EQUIPMENT, 4, shortValue(raw(item, 10)), "short_e");
-    appendPackedStat(
-        rows, category == 7 ? RUNE_EQUIPMENT : EQUIPMENT, 6, shortValue(raw(item, 11)), "short_f");
+    String packedStatSide =
+        switch (category) {
+          case 5 -> "Consumable stat boost";
+          case 7 -> RUNE_EQUIPMENT;
+          default -> EQUIPMENT;
+        };
+    appendPackedStat(rows, packedStatSide, 0, shortValue(raw(item, 8)), "short_c");
+    appendPackedStat(rows, packedStatSide, 2, shortValue(raw(item, 9)), "short_d");
+    appendPackedStat(rows, packedStatSide, 4, shortValue(raw(item, 10)), "short_e");
+    appendPackedStat(rows, packedStatSide, 6, shortValue(raw(item, 11)), "short_f");
     int misc = u8(raw(item, 12));
     if (misc != 0) {
       rows.add(
           ItemEffectRow.of(
-              EQUIPMENT,
+              packedStatSide,
               PACKED_STAT,
               statName(8),
               String.valueOf(misc),
@@ -323,13 +326,45 @@ final class EditorSupport {
         intArray(raw(item, 13)),
         "int_arr_a");
     appendIntEffects(rows, "Armor effect", intArray(raw(item, 14)), "int_arr_b");
-    appendShortEffects(rows, "Protection", shortArray(raw(item, 15)), statusNames, "short_arr_a");
     appendShortEffects(
         rows,
-        category == 5 ? CONSUMABLE_ROW : "On hit / item use",
+        category == 5 ? "Consumable status gate" : "Protection",
+        shortArray(raw(item, 15)),
+        statusNames,
+        "short_arr_a");
+    appendShortEffects(
+        rows,
+        category == 5 ? "Consumable status effect" : "On hit / item use",
         shortArray(raw(item, 16)),
         statusNames,
         "short_arr_b");
+
+    if (category == 5) {
+      int useEffect = u8(raw(item, 32));
+      if (useEffect != 0) {
+        rows.add(
+            ItemEffectRow.of(
+                CONSUMABLE_ROW,
+                "Use visual/effect",
+                "Effect ID",
+                String.valueOf(useEffect),
+                StringUtils.EMPTY,
+                "byte_q"));
+      }
+    }
+
+    if (category == 9 || category == 10) {
+      int skillId = u8(raw(item, 30));
+      int skillLevel = u8(raw(item, 31));
+      rows.add(
+          ItemEffectRow.of(
+              slotLabel(category, u8(raw(item, 0)) & 0x0f),
+              "Linked skill",
+              skillNameForTalentLink(skillId + 1, skillNames),
+              String.valueOf(skillLevel),
+              "skill id=%d".formatted(skillId),
+              "byte_o/byte_p"));
+    }
 
     if (category == 3) {
       int weaponReach = u8(raw(item, 18)) & 0x0f;
@@ -427,16 +462,16 @@ final class EditorSupport {
   static String slotLabel(int category, int subtype) {
     switch (category) {
       case 1:
-        return subtype == 0 ? "Ring" : "Neck/Accessory";
+        return subtype == 0 ? "Ring" : "Necklace";
       case 2:
         if (subtype == 0) {
-          return "Body Armor";
+          return "Main Armor";
         }
         if (subtype == 1) {
-          return "Head";
+          return "Head Armor";
         }
         if (subtype == 4) {
-          return "Feet";
+          return "Boot";
         }
         return "Armor subtype " + subtype;
       case 3:
@@ -444,13 +479,13 @@ final class EditorSupport {
       case 4:
         return "Equipment subtype " + subtype;
       case 5:
-        return CONSUMABLE_ROW;
+        return "Anytime Consumable";
       case 7:
         return "Rune/Modifier";
       case 8:
         return "Text/Special";
       case 9:
-        return "Skill item";
+        return "Combat Consumable";
       case 10:
         return "Special item";
       case 12:

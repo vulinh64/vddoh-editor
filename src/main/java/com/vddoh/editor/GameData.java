@@ -73,7 +73,8 @@ final class GameData {
       for (int i = 0; i < skills.length; i++) {
         appendSkillRows(data.skillLevels, i, skills[i], statuses, damageGroups, decode);
       }
-      appendItemRows(data.items, staticArray(itemClass, itemClass, 0), statuses, decode);
+      appendItemRows(
+          data.items, staticArray(itemClass, itemClass, 0), statuses, skillNames, decode);
       appendStatusRows(data.statuses, statuses, decode);
       appendMonsterRows(data.monsters, staticArray(monsterClass, monsterClass, 0), decode);
       appendHeroRows(data.heroes, largerStaticArray(heroClass, heroClass), decode);
@@ -143,7 +144,7 @@ final class GameData {
   }
 
   private static void appendItemRows(
-      List<ItemRow> rows, Object[] items, Object[] statuses, Method decode) {
+      List<ItemRow> rows, Object[] items, Object[] statuses, String[] skillNames, Method decode) {
     String[] statusNames = decodedNames(statuses, decode);
     for (int i = 0; items != null && i < items.length; i++) {
       Object item = items[i];
@@ -160,7 +161,7 @@ final class GameData {
       int resourceBonus = packedAttackDefense & 0xff;
       int weaponReach = category == 3 ? u8(raw(item, 18)) & 0x0f : 0;
       int weaponMode = category == 3 ? (u8(raw(item, 18)) >> 5) & 7 : 0;
-      List<ItemEffectRow> effects = decodeItemEffects(item, category, statusNames);
+      List<ItemEffectRow> effects = decodeItemEffects(item, category, statusNames, skillNames);
       rows.add(
           new ItemRow(
               i,

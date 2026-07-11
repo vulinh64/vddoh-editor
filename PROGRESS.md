@@ -28,6 +28,10 @@ This project contains the current Swing data editor and reverse-engineering note
 - [x] Editable Heroes table for natural stat growth, level cap, base crit chance, and base crit damage.
 - [x] Read-only Hero previews for base derived stats and core stats at level cap.
 - [x] Editable Items table for safe top-level fields and decoded effect previews.
+- [x] Fixed Items/Skills search so the lower effect-detail table refreshes even when filtering keeps view row `0` selected.
+- [x] Improved Item effect previews: category-5 consumables now show packed stat boosts, status-use arrays, and use effect IDs as consumable effects; category-9/10 skill items now show their linked skill from `byte_o/byte_p`.
+- [x] Split the Items tab into filtered Equipment, Consumables, and Other views. Equipment can be further filtered by Weapon, Head Armor, Necklace, Ring, Main Armor, Boot, and Rune/Modifier. Consumables now include both anytime consumables and combat-only skill-backed consumables.
+- [x] Added double-click navigation from an item `Linked skill` effect row to the Skills tab, using the selected item's full name as the skill search text.
 - [x] Editable Monsters table v1: names read-only; confirmed EXP, Filar, Death Value, Effect ID, and STR/SPI/VIT/SPD-like core stat bytes editable. HP/combat previews recalculate from the core bytes; drops/actions/effects remain read-only.
 - [x] Editable Statuses table for safe status fields.
 - [x] Search support across Skills, Heroes, Items, Monsters, and Statuses.

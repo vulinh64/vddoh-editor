@@ -21,6 +21,10 @@ final class ItemEffectTableModel extends AbstractTableModel {
     fireTableDataChanged();
   }
 
+  ItemEffectRow row(int rowIndex) {
+    return rows.get(rowIndex);
+  }
+
   @Override
   public int getRowCount() {
     return rows.size();

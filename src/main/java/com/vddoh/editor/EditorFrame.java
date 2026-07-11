@@ -13,6 +13,7 @@ import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import javax.swing.*;
@@ -37,6 +39,8 @@ final class EditorFrame extends JFrame {
   public static final String SEARCH_LABEL = "Search";
   public static final String CLEAR_LABEL = "Clear";
   public static final String CLASS_G = "g.class";
+  public static final String ALL_EQUIPMENT = "All Equipment";
+  public static final String SKILLS_TAB = "Skills";
   private final JTextField jarPath = new JTextField("vddoh.jar", 32);
   private final JTextField gameDatPath =
       new JTextField(
@@ -58,6 +62,32 @@ final class EditorFrame extends JFrame {
   private final StatusTableModel statusesModel = new StatusTableModel();
   private final JLabel status = new JLabel("Ready");
   private final JCheckBox patchResistanceOverflow = new JCheckBox("Patch resistance overflow");
+  private final JTabbedPane tabs = new JTabbedPane();
+  private JTextField skillSearch = new JTextField(24);
+  private Runnable applySkillSearch = () -> {};
+
+  private enum ItemFilter {
+    EQUIPMENT {
+      @Override
+      boolean includes(ItemRow row) {
+        return row.category == 1 || row.category == 2 || row.category == 3 || row.category == 7;
+      }
+    },
+    CONSUMABLES {
+      @Override
+      boolean includes(ItemRow row) {
+        return row.category == 5 || row.category == 9;
+      }
+    },
+    OTHER {
+      @Override
+      boolean includes(ItemRow row) {
+        return !EQUIPMENT.includes(row) && !CONSUMABLES.includes(row);
+      }
+    };
+
+    abstract boolean includes(ItemRow row);
+  }
 
   EditorFrame() {
     super("VDDOH Data Editor");
@@ -73,8 +103,7 @@ final class EditorFrame extends JFrame {
     top.add(pathRow("Output JAR", outputJarPath, false, true));
     add(top, BorderLayout.NORTH);
 
-    JTabbedPane tabs = new JTabbedPane();
-    tabs.addTab("Skills", createSkillsPanel());
+    tabs.addTab(SKILLS_TAB, createSkillsPanel());
     tabs.addTab("Talents", createSearchableTablePanel(talentsModel, "Talents"));
     tabs.addTab("Heroes", createSearchableTablePanel(heroesModel, "Heroes"));
     tabs.addTab("Items", createItemsPanel());
@@ -148,14 +177,13 @@ final class EditorFrame extends JFrame {
                 skillEffectsModel.setRows(new ArrayList<>());
                 return;
               }
-              int modelRow = levels.convertRowIndexToModel(selected);
-              skillEffectsModel.setRows(skillsModel.effectRows(modelRow));
+              showSelectedSkillEffects(levels);
             });
 
-    JTextField search = new JTextField(24);
-    Runnable applySearch =
+    skillSearch = new JTextField(24);
+    applySkillSearch =
         () -> {
-          String query = search.getText().trim().toLowerCase();
+          String query = skillSearch.getText().trim().toLowerCase();
           if (query.length() < 3) {
             sorter.setRowFilter(null);
           } else {
@@ -170,13 +198,14 @@ final class EditorFrame extends JFrame {
           }
           if (levels.getRowCount() > 0) {
             levels.setRowSelectionInterval(0, 0);
+            showSelectedSkillEffects(levels);
           } else {
             skillEffectsModel.setRows(new ArrayList<>());
           }
           status.setText(
               "Skills shown: " + levels.getRowCount() + " / " + skillsModel.getRowCount());
         };
-    JPanel searchPanel = createSearchPanel(search, applySearch);
+    JPanel searchPanel = createSearchPanel(skillSearch, applySkillSearch);
 
     JSplitPane split =
         new JSplitPane(
@@ -188,7 +217,28 @@ final class EditorFrame extends JFrame {
     return panel;
   }
 
+  private void showSelectedSkillEffects(JTable levels) {
+    int selected = levels.getSelectedRow();
+    if (selected < 0) {
+      skillEffectsModel.setRows(new ArrayList<>());
+      return;
+    }
+    int modelRow = levels.convertRowIndexToModel(selected);
+    skillEffectsModel.setRows(skillsModel.effectRows(modelRow));
+  }
+
   private JPanel createItemsPanel() {
+    JTabbedPane itemTabs = new JTabbedPane();
+    itemTabs.addTab("Equipment", createFilteredItemsPanel("Equipment", ItemFilter.EQUIPMENT));
+    itemTabs.addTab("Consumables", createFilteredItemsPanel("Consumables", ItemFilter.CONSUMABLES));
+    itemTabs.addTab("Other", createFilteredItemsPanel("Other Items", ItemFilter.OTHER));
+
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.add(itemTabs, BorderLayout.CENTER);
+    return panel;
+  }
+
+  private JPanel createFilteredItemsPanel(String label, ItemFilter filter) {
     JTable items = new JTable(itemsModel);
     configureScrollableTable(items);
     items.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -197,6 +247,15 @@ final class EditorFrame extends JFrame {
 
     JTable effects = new JTable(itemEffectsModel);
     configureScrollableTable(effects);
+    effects.addMouseListener(
+        new MouseAdapter() {
+          @Override
+          public void mouseClicked(MouseEvent event) {
+            if (event.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(event)) {
+              openLinkedSkillForSelectedItem(items, effects);
+            }
+          }
+        });
     items
         .getSelectionModel()
         .addListSelectionListener(
@@ -209,33 +268,32 @@ final class EditorFrame extends JFrame {
                 itemEffectsModel.setRows(new ArrayList<>());
                 return;
               }
-              int modelRow = items.convertRowIndexToModel(selected);
-              itemEffectsModel.setRows(itemsModel.effectRows(modelRow));
+              showSelectedItemEffects(items);
             });
 
     JTextField search = new JTextField(24);
+    JComboBox<String> equipmentSlots = new JComboBox<>(equipmentSlotLabels());
+    equipmentSlots.setVisible(filter == ItemFilter.EQUIPMENT);
     Runnable applySearch =
         () -> {
           String query = search.getText().trim().toLowerCase();
-          if (query.length() < 3) {
-            sorter.setRowFilter(null);
-          } else {
-            sorter.setRowFilter(
-                new RowFilter<>() {
-                  @Override
-                  public boolean include(Entry<? extends ItemTableModel, ? extends Integer> entry) {
-                    return itemsModel.matchesSearch(entry.getIdentifier(), query);
-                  }
-                });
-          }
+          String slotFilter = Objects.toString(equipmentSlots.getSelectedItem(), ALL_EQUIPMENT);
+          sorter.setRowFilter(itemRowFilter(filter, query, slotFilter));
           if (items.getRowCount() > 0) {
             items.setRowSelectionInterval(0, 0);
+            showSelectedItemEffects(items);
           } else {
             itemEffectsModel.setRows(new ArrayList<>());
           }
-          status.setText("Items shown: " + items.getRowCount() + " / " + itemsModel.getRowCount());
+          status.setText(
+              "%s shown: %d / %d".formatted(label, items.getRowCount(), itemsModel.getRowCount()));
         };
     JPanel searchPanel = createSearchPanel(search, applySearch);
+    if (filter == ItemFilter.EQUIPMENT) {
+      equipmentSlots.addActionListener(_ -> applySearch.run());
+      searchPanel.add(new JLabel("Slot"));
+      searchPanel.add(equipmentSlots);
+    }
 
     JSplitPane split =
         new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(items), new JScrollPane(effects));
@@ -243,7 +301,70 @@ final class EditorFrame extends JFrame {
     JPanel panel = new JPanel(new BorderLayout());
     panel.add(searchPanel, BorderLayout.NORTH);
     panel.add(split, BorderLayout.CENTER);
+    applySearch.run();
     return panel;
+  }
+
+  private RowFilter<ItemTableModel, Integer> itemRowFilter(
+      ItemFilter filter, String query, String slotFilter) {
+    return new RowFilter<>() {
+      @Override
+      public boolean include(Entry<? extends ItemTableModel, ? extends Integer> entry) {
+        int rowIndex = entry.getIdentifier();
+        ItemRow row = itemsModel.row(rowIndex);
+        if (!filter.includes(row)) {
+          return false;
+        }
+        if (filter == ItemFilter.EQUIPMENT
+            && !ALL_EQUIPMENT.equals(slotFilter)
+            && !slotFilter.equals(row.slotLabel)) {
+          return false;
+        }
+        return query.length() < 3 || itemsModel.matchesSearch(rowIndex, query);
+      }
+    };
+  }
+
+  private static String[] equipmentSlotLabels() {
+    return new String[] {
+      ALL_EQUIPMENT,
+      "Weapon",
+      "Head Armor",
+      "Necklace",
+      "Ring",
+      "Main Armor",
+      "Boot",
+      "Rune/Modifier"
+    };
+  }
+
+  private void openLinkedSkillForSelectedItem(JTable items, JTable effects) {
+    int effectViewRow = effects.getSelectedRow();
+    int itemViewRow = items.getSelectedRow();
+    if (effectViewRow < 0 || itemViewRow < 0) {
+      return;
+    }
+    int effectModelRow = effects.convertRowIndexToModel(effectViewRow);
+    ItemEffectRow effect = itemEffectsModel.row(effectModelRow);
+    if (!"Linked skill".equals(effect.type())) {
+      return;
+    }
+    int itemModelRow = items.convertRowIndexToModel(itemViewRow);
+    ItemRow item = itemsModel.row(itemModelRow);
+    skillSearch.setText(item.name);
+    applySkillSearch.run();
+    tabs.setSelectedIndex(tabs.indexOfTab(SKILLS_TAB));
+    status.setText("Opened linked skill search for " + item.name);
+  }
+
+  private void showSelectedItemEffects(JTable items) {
+    int selected = items.getSelectedRow();
+    if (selected < 0) {
+      itemEffectsModel.setRows(new ArrayList<>());
+      return;
+    }
+    int modelRow = items.convertRowIndexToModel(selected);
+    itemEffectsModel.setRows(itemsModel.effectRows(modelRow));
   }
 
   private JPanel createSearchableTablePanel(AbstractTableModel model, String label) {

@@ -467,6 +467,40 @@ This confirms that base hero editing should focus on Strength, Spirit, Vitality,
 Speed, and their growth curves. Equipment/item editing should expose attack,
 defense, HP/resource, movement, regen, resistance, and on-hit modifiers.
 
+## Item Effect Notes
+
+There are at least two consumable paths:
+
+```text
+Category 5  anytime/direct consumable
+Category 9  combat-only skill-backed consumable
+```
+
+Category `5` is the direct consumable path. These items use direct item fields
+for their effects:
+
+```text
+short_g     HP effect applied during item use
+short_h     resource effect applied during item use
+short_c..f  packed stat/equipment-style bonuses, also used by some consumables
+short_arr_a status gate/check array observed in the consumable use path
+short_arr_b status apply/remove array observed in the consumable use path
+byte_q      use visual/effect id
+```
+
+Category `9` items, including Troll Elixir and Might Potion, are combat-only
+consumables that dispatch through a linked skill. Their linked skill is stored
+as:
+
+```text
+byte_o  zero-based skill id, used as f.a[byte_o & 255]
+byte_p  skill level/variant passed to the selected skill
+```
+
+The editor now displays category-5 consumable fields as consumable effects,
+places category-9 combat consumables in the Consumables item view, and displays
+their skill links as linked skill rows.
+
 ## Confirmed Resistances From Screenshots
 
 From the stat screen:
