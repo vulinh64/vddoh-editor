@@ -111,16 +111,20 @@ In `src/main/java/com/vddoh/editor/`:
 
 | Class | Purpose |
 |---|---|
-| `VddohDataEditor.java` | Main class only. |
-| `EditorFrame.java` | Swing UI coordinator and build/load actions. |
-| `EditorSupport.java` | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers. |
-| `GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
-| `GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
-| `GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |
-| `GameDatMonsterPatcher.java` | Writes conservative monster v1 fields: EXP, Filar, Death Value, tail Effect ID, and packed STR/SPI/VIT/SPD-like core stat bytes. |
-| `ItemDatPatcher.java` | Writes safe item top-level fields. |
-| `GameDatStatusPatcher.java` | Writes safe status fields. |
-| `ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow; uses Class-File API semantic detection plus byte-minimal raw replacement. |
+| `VddohDataEditor.java` | Application launcher. |
+| `view/FxEditorApplication.java` | JavaFX UI coordinator and main tab layout. |
+| `view/**` | JavaFX views and view-models. |
+| `data/**` | DTOs, rows, snapshots, patch requests, summaries, and read models. |
+| `service/EditorPatchService.java` | Patch build service. `buildFullPatch(PatchBuildRequest)` writes game.dat, item.dat, and optional `g.class` replacements in one cumulative JAR operation. |
+| `service/GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
+| `service/GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
+| `service/GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |
+| `service/GameDatMonsterPatcher.java` | Writes conservative monster fields: EXP, Filar, Soul Restore, tail Effect ID, packed STR/SPI/VIT/SPD-like core stat bytes, and existing fixed-width effect/resistance/drop array entries. |
+| `service/ItemDatPatcher.java` | Writes safe item top-level fields and existing fixed-width decoded effect bytes. |
+| `service/GameDatStatusPatcher.java` | Writes safe status fields. |
+| `service/ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow; uses Class-File API semantic detection plus byte-minimal raw replacement. |
+| `service/EquipmentBonusClassPatcher.java` | Optional `g.class` bytecode patch for the equipment `byte_d` overwrite quirk; uses Class-File API to transform four assignment sites in `g.b()V` into accumulation sites. |
+| `utils/EditorSupport.java` | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers. |
 
 ## Future Direction
 
@@ -179,9 +183,9 @@ Guidelines for new editor data classes:
 - If a record component is a collection, normalize null input to an empty
   collection in the compact constructor unless null has a specific documented
   meaning.
-- Editable Swing table rows can remain mutable until the table model is updated
-  to replace row instances. `MonsterRow` is the current immutable editable-row
-  prototype using `@With`.
+- Mutable parser accumulators may stay mutable until a clean immutable flow is
+  obvious. Immutable editable rows should use `@With`; `MonsterRow` is the
+  current immutable row prototype.
 
 For Java ME/API classes, keep `me-lib` minimal:
 

@@ -1,17 +1,13 @@
 package com.vddoh.editor;
 
-import javax.swing.SwingUtilities;
+import com.vddoh.editor.view.FxEditorApplication;
+import javafx.application.Application;
 
 public final class VddohDataEditor {
 
-  void main() {
-    SwingUtilities.invokeLater(
-        () -> {
-          try {
-            new EditorFrame().setVisible(true);
-          } catch (Exception ex) {
-            EditorSupport.showError(null, ex);
-          }
-        });
+  private VddohDataEditor() {}
+
+  public static void main(String[] args) {
+    Application.launch(FxEditorApplication.class, args);
   }
 }

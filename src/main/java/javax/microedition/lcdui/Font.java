@@ -1,8 +1,7 @@
 package javax.microedition.lcdui;
 
-import lombok.Getter;
-
 import javax.annotation.processing.Generated;
+import lombok.Getter;
 
 @Generated("me")
 @Getter
