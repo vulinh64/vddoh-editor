@@ -4,18 +4,14 @@ import static com.vddoh.editor.view.ui.FxTableColumns.editableIntColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.intColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.textColumn;
 
-import com.vddoh.editor.data.BuildResult;
 import com.vddoh.editor.data.EditorWorkspace;
-import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.FxNavigation;
-import com.vddoh.editor.view.ui.FxDialogs;
 import com.vddoh.editor.view.ui.FxStickyTableSplit;
 import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
-import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -63,15 +59,13 @@ public final class FxSkillsView extends BorderPane {
 
   private HBox filters() {
     search.setPromptText("Search skills");
-    Button build = new Button("Build Skill Patch");
-    build.setOnAction(_ -> buildPatch(build));
     Button reset = new Button("Reset Skill Edits");
     reset.setOnAction(
         _ -> {
           skills.forEach(FxSkillViewModel::reset);
           state.status("Reset JavaFX skill edits.");
         });
-    HBox controls = new HBox(8, new Label("Search"), search, build, reset);
+    HBox controls = new HBox(8, new Label("Search"), search, reset);
     controls.getStyleClass().add("filter-row");
     controls.setPadding(new Insets(8));
     HBox.setHgrow(search, Priority.ALWAYS);
@@ -129,41 +123,6 @@ public final class FxSkillsView extends BorderPane {
     filtered.setPredicate(skill -> skill.matchesSearch(search.getText()));
   }
 
-  private void buildPatch(Button build) {
-    var edits = changedEdits();
-    if (edits.isEmpty()) {
-      state.status("No JavaFX skill edits to patch.");
-      return;
-    }
-    Task<BuildResult> task =
-        new Task<>() {
-          @Override
-          protected BuildResult call() throws Exception {
-            return EditorPatchService.buildSkillPatch(state.workspace(), edits);
-          }
-        };
-    build.disableProperty().bind(task.runningProperty());
-    state.status("Building skill patch with %d edited skill levels...".formatted(edits.size()));
-    task.setOnSucceeded(
-        _ -> {
-          BuildResult result = task.getValue();
-          state.status("Wrote %s (%s)".formatted(result.outputJar(), result.summary()));
-          build.disableProperty().unbind();
-          build.setDisable(false);
-        });
-    task.setOnFailed(
-        _ -> {
-          Throwable error = task.getException();
-          state.status("Skill patch failed: " + error.getMessage());
-          FxDialogs.showError("Unable to build skill patch", error);
-          build.disableProperty().unbind();
-          build.setDisable(false);
-        });
-    Thread thread = new Thread(task, "vddoh-fx-skill-patch");
-    thread.setDaemon(true);
-    thread.start();
-  }
-
   private List<com.vddoh.editor.data.SkillEdit> changedEdits() {
     return skills.stream().filter(FxSkillViewModel::changed).map(FxSkillViewModel::toEdit).toList();
   }
@@ -173,13 +132,14 @@ public final class FxSkillsView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            editableIntColumn("Cost", FxSkillViewModel::costProperty, 72),
-            intColumn("Shape", FxSkillViewModel::areaShape, 72),
-            textColumn("Area", FxSkillViewModel::area, 82),
-            intColumn("Range", FxSkillViewModel::range, 72),
-            textColumn("Relative", FxSkillViewModel::relativeAreaGrowth, 90),
-            textColumn("Notes", FxSkillViewModel::notes, 220));
+        .setAll(
+            List.of(
+                editableIntColumn("Cost", FxSkillViewModel::costProperty, 72),
+                intColumn("Shape", FxSkillViewModel::areaShape, 72),
+                textColumn("Area", FxSkillViewModel::area, 82),
+                intColumn("Range", FxSkillViewModel::range, 72),
+                textColumn("Relative", FxSkillViewModel::relativeAreaGrowth, 90),
+                textColumn("Notes", FxSkillViewModel::notes, 220)));
     return table;
   }
 
@@ -188,10 +148,11 @@ public final class FxSkillsView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            intColumn("ID", FxSkillViewModel::skillId, 62),
-            textColumn("Skill", FxSkillViewModel::skillName, 190),
-            intColumn("Level", FxSkillViewModel::level, 72));
+        .setAll(
+            List.of(
+                intColumn("ID", FxSkillViewModel::skillId, 62),
+                textColumn("Skill", FxSkillViewModel::skillName, 190),
+                intColumn("Level", FxSkillViewModel::level, 72)));
     return table;
   }
 
@@ -200,14 +161,15 @@ public final class FxSkillsView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            textColumn("Type", FxSkillEffectViewModel::type, 130),
-            intColumn("Index", FxSkillEffectViewModel::index, 62),
-            intColumn("Target ID", FxSkillEffectViewModel::targetId, 82),
-            textColumn("Target", FxSkillEffectViewModel::target, 150),
-            editableIntColumn("Value", FxSkillEffectViewModel::valueProperty, 72),
-            textColumn("Editable", FxSkillEffectViewModel::editable, 80),
-            textColumn("Notes", FxSkillEffectViewModel::notes, 220));
+        .setAll(
+            List.of(
+                textColumn("Type", FxSkillEffectViewModel::type, 130),
+                intColumn("Index", FxSkillEffectViewModel::index, 62),
+                intColumn("Target ID", FxSkillEffectViewModel::targetId, 82),
+                textColumn("Target", FxSkillEffectViewModel::target, 150),
+                editableIntColumn("Value", FxSkillEffectViewModel::valueProperty, 72),
+                textColumn("Editable", FxSkillEffectViewModel::editable, 80),
+                textColumn("Notes", FxSkillEffectViewModel::notes, 220)));
     return table;
   }
 }

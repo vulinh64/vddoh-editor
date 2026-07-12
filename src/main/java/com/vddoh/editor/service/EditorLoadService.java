@@ -30,10 +30,15 @@ public final class EditorLoadService {
     Path workDir = editorUserPath("temp").resolve(baseName);
     Path gameDat = workDir.resolve(GAME_DAT_PATH);
     Path itemDat = workDir.resolve(ITEM_DAT_PATH);
-    Path outputJar = editorUserPath("dist").resolve(baseName + "-patched.jar");
+    Path outputJar =
+        EditorPatchService.nextAvailableOutputJar(
+            editorUserPath("dist").resolve(baseName + "-patched-0001.jar"));
     ExtractedDataFiles extracted = extractDataFilesFromJar(inputJar, gameDat, itemDat);
+    byte[] heroClass = readJarEntry(inputJar, HERO_CLASS_ENTRY);
     ResistanceOverflowClassPatcher.State patchState =
-        ResistanceOverflowClassPatcher.state(readJarEntry(inputJar, HERO_CLASS_ENTRY));
+        ResistanceOverflowClassPatcher.state(heroClass);
+    EquipmentBonusClassPatcher.State equipmentBonusState =
+        EquipmentBonusClassPatcher.state(heroClass);
     GameData data = GameData.loadFromOriginalClasses(inputJar);
     List<SkillLevelSnapshot> skillLevels =
         data.skillLevels.stream().map(EditorSnapshots::skillLevel).toList();
@@ -43,7 +48,7 @@ public final class EditorLoadService {
     List<MonsterSnapshot> monsters = data.monsters.stream().map(EditorSnapshots::monster).toList();
     List<StatusSnapshot> statuses = data.statuses.stream().map(EditorSnapshots::status).toList();
     log.info(
-        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={} and resistance state {}",
+        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}",
         inputJar,
         skillLevels.size(),
         talents.size(),
@@ -51,7 +56,8 @@ public final class EditorLoadService {
         items.size(),
         monsters.size(),
         statuses.size(),
-        patchState);
+        patchState,
+        equipmentBonusState);
     return EditorWorkspace.builder()
         .inputJar(inputJar)
         .gameDat(gameDat)
@@ -60,6 +66,7 @@ public final class EditorLoadService {
         .gameDatEntryName(extracted.gameDatEntryName())
         .itemDatEntryName(extracted.itemDatEntryName())
         .resistanceOverflowState(patchState.name())
+        .equipmentBonusState(equipmentBonusState.name())
         .skillLevels(skillLevels)
         .talents(talents)
         .heroes(heroes)

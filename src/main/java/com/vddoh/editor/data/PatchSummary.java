@@ -4,25 +4,98 @@ import static com.vddoh.editor.utils.EditorSupport.joinParts;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public final class PatchSummary {
-  public int cost;
-  public int damage;
-  public int status;
-  public int price;
-  public int icon;
-  public int hp;
-  public int resource;
-  public int duration;
-  public int expire;
-  public int heroStats;
-  public int heroSeeds;
-  public int heroResistOverflow;
-  public int monsterHeader;
-  public int monsterCoreStats;
-  public int monsterEffect;
-  public int talentAmount;
-  public int skipped;
+  private int cost;
+  private int damage;
+  private int status;
+  private int price;
+  private int icon;
+  private int hp;
+  private int resource;
+  private int duration;
+  private int expire;
+  private int heroStats;
+  private int heroSeeds;
+  private int heroResistOverflow;
+  private int equipmentBonusAggregation;
+  private int monsterHeader;
+  private int monsterCoreStats;
+  private int monsterEffect;
+  private int talentAmount;
+  private int skipped;
+
+  public void incrementCost() {
+    cost++;
+  }
+
+  public void incrementDamage() {
+    damage++;
+  }
+
+  public void incrementStatus() {
+    status++;
+  }
+
+  public void incrementPrice() {
+    price++;
+  }
+
+  public void incrementIcon() {
+    icon++;
+  }
+
+  public void incrementHp() {
+    hp++;
+  }
+
+  public void incrementResource() {
+    resource++;
+  }
+
+  public void incrementDuration() {
+    duration++;
+  }
+
+  public void incrementExpire() {
+    expire++;
+  }
+
+  public void incrementHeroStats() {
+    heroStats++;
+  }
+
+  public void incrementHeroSeeds() {
+    heroSeeds++;
+  }
+
+  public void incrementHeroResistOverflow() {
+    heroResistOverflow++;
+  }
+
+  public void incrementMonsterHeader() {
+    monsterHeader++;
+  }
+
+  public void incrementMonsterCoreStats() {
+    monsterCoreStats++;
+  }
+
+  public void incrementMonsterEffect() {
+    monsterEffect++;
+  }
+
+  public void incrementTalentAmount() {
+    talentAmount++;
+  }
+
+  public void incrementSkipped() {
+    skipped++;
+  }
 
   public boolean onlySkipped() {
     return cost == 0
@@ -37,6 +110,7 @@ public final class PatchSummary {
         && heroStats == 0
         && heroSeeds == 0
         && heroResistOverflow == 0
+        && equipmentBonusAggregation == 0
         && monsterHeader == 0
         && monsterCoreStats == 0
         && monsterEffect == 0
@@ -58,6 +132,7 @@ public final class PatchSummary {
     addPart(parts, "heroStats", heroStats);
     addPart(parts, "heroCrit", heroSeeds);
     addPart(parts, "heroResistOverflow", heroResistOverflow);
+    addPart(parts, "equipmentBonusAggregation", equipmentBonusAggregation);
     addPart(parts, "monsterHeader", monsterHeader);
     addPart(parts, "monsterCoreStats", monsterCoreStats);
     addPart(parts, "monsterEffect", monsterEffect);

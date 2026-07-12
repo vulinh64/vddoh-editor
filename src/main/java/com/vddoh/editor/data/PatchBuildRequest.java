@@ -15,7 +15,8 @@ public record PatchBuildRequest(
     List<ItemEdit> itemEdits,
     List<MonsterEdit> monsterEdits,
     List<StatusEdit> statusEdits,
-    boolean classPatchRequested) {
+    boolean resistanceOverflowPatchRequested,
+    boolean equipmentBonusPatchRequested) {
 
   public PatchBuildRequest {
     skillEdits = skillEdits == null ? Collections.emptyList() : List.copyOf(skillEdits);

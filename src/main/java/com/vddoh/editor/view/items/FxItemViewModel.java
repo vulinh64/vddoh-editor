@@ -73,16 +73,8 @@ public final class FxItemViewModel {
     return hpRestore.get();
   }
 
-  public IntegerProperty hpRestoreProperty() {
-    return hpRestore;
-  }
-
   public int resourceRestore() {
     return resourceRestore.get();
-  }
-
-  public IntegerProperty resourceRestoreProperty() {
-    return resourceRestore;
   }
 
   public int hpBonus() {
@@ -118,7 +110,8 @@ public final class FxItemViewModel {
     return price() != item.price()
         || icon() != item.icon()
         || hpRestore() != item.hpRestore()
-        || resourceRestore() != item.resourceRestore();
+        || resourceRestore() != item.resourceRestore()
+        || effects.stream().anyMatch(FxItemEffectViewModel::changed);
   }
 
   public void resetEdits() {
@@ -126,6 +119,7 @@ public final class FxItemViewModel {
     icon.set(item.icon());
     hpRestore.set(item.hpRestore());
     resourceRestore.set(item.resourceRestore());
+    effects.forEach(FxItemEffectViewModel::reset);
   }
 
   public ItemEdit toEdit() {
@@ -135,6 +129,11 @@ public final class FxItemViewModel {
         .icon(checkedRange(icon(), 0x7f, "icon"))
         .hpRestore(checkedRange(hpRestore(), 0xffff, "HP restore/effect"))
         .resourceRestore(checkedRange(resourceRestore(), 0xffff, "resource restore/effect"))
+        .effectEdits(
+            effects.stream()
+                .filter(FxItemEffectViewModel::changed)
+                .map(FxItemEffectViewModel::toEdit)
+                .toList())
         .build();
   }
 

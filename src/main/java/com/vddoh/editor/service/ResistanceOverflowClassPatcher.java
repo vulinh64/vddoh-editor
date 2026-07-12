@@ -104,7 +104,7 @@ public final class ResistanceOverflowClassPatcher {
     State state = state(data);
     log.info("Applying resistance overflow class patch; current state={}", state);
     if (state == State.PATCHED) {
-      summary.skipped++;
+      summary.incrementSkipped();
       log.info("Resistance overflow class patch skipped because class is already patched");
       return summary;
     }
@@ -118,7 +118,7 @@ public final class ResistanceOverflowClassPatcher {
       throw new IllegalStateException(
           "Resistance overflow patch did not produce the expected g.class bytecode");
     }
-    summary.heroResistOverflow++;
+    summary.incrementHeroResistOverflow();
     log.info("Resistance overflow class patch applied at byte offset {}", offset);
     return summary;
   }

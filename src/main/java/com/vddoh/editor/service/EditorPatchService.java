@@ -6,6 +6,7 @@ import static com.vddoh.editor.utils.EditorSupport.replaceJarEntries;
 import com.vddoh.editor.data.*;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,16 +31,18 @@ public final class EditorPatchService {
     }
 
     log.info(
-        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, classPatchRequested={}",
+        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}",
         plan.skillPatches().size(),
         plan.talentPatches().size(),
         plan.heroPatches().size(),
         plan.itemPatches().size(),
         plan.monsterPatches().size(),
         plan.statusPatches().size(),
-        plan.classPatchRequested());
+        plan.resistanceOverflowPatchRequested(),
+        plan.equipmentBonusPatchRequested());
 
     Files.createDirectories(workspace.outputJar().toAbsolutePath().getParent());
+    Path outputJar = nextAvailableOutputJar(workspace.outputJar());
     Map<String, byte[]> replacements = new LinkedHashMap<>();
     List<String> summaries = new ArrayList<>();
 
@@ -47,14 +50,14 @@ public final class EditorPatchService {
     addItemDataPatch(plan, replacements, summaries);
     addClassPatch(plan, replacements, summaries);
 
-    replaceJarEntries(workspace.inputJar(), workspace.outputJar(), replacements);
+    replaceJarEntries(workspace.inputJar(), outputJar, replacements);
     String summary = String.join("; ", summaries);
     log.info(
         "Wrote JavaFX full patch {} with replacements {} and summary {}",
-        workspace.outputJar(),
+        outputJar,
         replacements.keySet(),
         summary);
-    return BuildResult.builder().outputJar(workspace.outputJar()).summary(summary).build();
+    return BuildResult.builder().outputJar(outputJar).summary(summary).build();
   }
 
   private static void addGameDataPatch(
@@ -96,7 +99,16 @@ public final class EditorPatchService {
       return;
     }
     byte[] heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
-    summaries.add("class patches: " + ResistanceOverflowClassPatcher.patch(heroClass));
+    List<String> patchSummaries = new ArrayList<>();
+    if (plan.resistanceOverflowPatchRequested()) {
+      patchSummaries.add("resistance overflow: " + ResistanceOverflowClassPatcher.patch(heroClass));
+    }
+    if (plan.equipmentBonusPatchRequested()) {
+      EquipmentBonusClassPatcher.Result result = EquipmentBonusClassPatcher.patch(heroClass);
+      heroClass = result.data();
+      patchSummaries.add("equipment bonus: " + result.summary());
+    }
+    summaries.add("class patches: " + String.join(", ", patchSummaries));
     replacements.put(HERO_CLASS_ENTRY, heroClass);
   }
 
@@ -151,30 +163,9 @@ public final class EditorPatchService {
     if (!statusPatches.isEmpty()) {
       summaries.add("statuses: " + GameDatStatusPatcher.patch(gameData, statusPatches));
     }
-    replaceSingleEntry(workspace, workspace.gameDatEntryName(), GAME_DAT_FILE, gameData);
-    return BuildResult.builder()
-        .outputJar(workspace.outputJar())
-        .summary(String.join("; ", summaries))
-        .build();
-  }
-
-  public static BuildResult buildSkillPatch(EditorWorkspace workspace, List<SkillEdit> edits)
-      throws IOException {
-    if (workspace == null) {
-      throw new IllegalArgumentException("Load a VDDOH JAR before building a patch.");
-    }
-    if (edits == null || edits.isEmpty()) {
-      throw new IllegalArgumentException("No skill edits to patch.");
-    }
-    List<SkillPatch> skillPatches = edits.stream().map(EditorPatchService::patch).toList();
-    log.info("Building JavaFX skill patch with {} edited skill levels", skillPatches.size());
-    byte[] gameData = Files.readAllBytes(workspace.gameDat());
-    PatchSummary summary = GameDatSkillPatcher.patch(gameData, skillPatches);
-    replaceSingleEntry(workspace, workspace.gameDatEntryName(), GAME_DAT_FILE, gameData);
-    return BuildResult.builder()
-        .outputJar(workspace.outputJar())
-        .summary("skills: " + summary)
-        .build();
+    Path outputJar =
+        replaceSingleEntry(workspace, workspace.gameDatEntryName(), GAME_DAT_FILE, gameData);
+    return BuildResult.builder().outputJar(outputJar).summary(String.join("; ", summaries)).build();
   }
 
   public static BuildResult buildItemPatch(EditorWorkspace workspace, List<ItemEdit> edits)
@@ -191,26 +182,58 @@ public final class EditorPatchService {
     log.info("Building JavaFX item-only patch with {} edits", patches.size());
     byte[] itemData = Files.readAllBytes(workspace.itemDat());
     PatchSummary summary = ItemDatPatcher.patch(itemData, patches);
-    replaceSingleEntry(workspace, workspace.itemDatEntryName(), ITEM_DAT_FILE, itemData);
-    return BuildResult.builder()
-        .outputJar(workspace.outputJar())
-        .summary("items: " + summary)
-        .build();
+    Path outputJar =
+        replaceSingleEntry(workspace, workspace.itemDatEntryName(), ITEM_DAT_FILE, itemData);
+    return BuildResult.builder().outputJar(outputJar).summary("items: " + summary).build();
   }
 
-  private static void replaceSingleEntry(
+  private static Path replaceSingleEntry(
       EditorWorkspace workspace, String entryName, String debugFileName, byte[] data)
       throws IOException {
     Files.createDirectories(workspace.outputJar().toAbsolutePath().getParent());
+    Path outputJar = nextAvailableOutputJar(workspace.outputJar());
     writeDebugDataFile(workspace, debugFileName, data);
     Map<String, byte[]> replacements = new LinkedHashMap<>();
     replacements.put(entryName, data);
-    replaceJarEntries(workspace.inputJar(), workspace.outputJar(), replacements);
+    replaceJarEntries(workspace.inputJar(), outputJar, replacements);
+    return outputJar;
   }
 
   private static void writeDebugDataFile(
       EditorWorkspace workspace, String debugFileName, byte[] data) throws IOException {
     Files.write(workspace.outputJar().resolveSibling(debugFileName), data);
+  }
+
+  static Path nextAvailableOutputJar(Path firstCandidate) {
+    Path absoluteCandidate = firstCandidate.toAbsolutePath().normalize();
+    if (!Files.exists(absoluteCandidate)) {
+      return absoluteCandidate;
+    }
+    Path directory = absoluteCandidate.getParent();
+    String fileName = absoluteCandidate.getFileName().toString();
+    String extension = ".jar";
+    String stem =
+        fileName.endsWith(extension)
+            ? fileName.substring(0, fileName.length() - extension.length())
+            : fileName;
+    String prefix = numberedPrefix(stem);
+    for (int suffix = 1; suffix <= 9999; suffix++) {
+      Path candidate = directory.resolve("%s%04d%s".formatted(prefix, suffix, extension));
+      if (!Files.exists(candidate)) {
+        return candidate;
+      }
+    }
+    throw new IllegalStateException(
+        "No available patched JAR filename remains for " + firstCandidate);
+  }
+
+  private static String numberedPrefix(String stem) {
+    if (stem.length() > 5
+        && stem.charAt(stem.length() - 5) == '-'
+        && stem.substring(stem.length() - 4).chars().allMatch(Character::isDigit)) {
+      return stem.substring(0, stem.length() - 4);
+    }
+    return stem + "-";
   }
 
   private static TalentPatch patch(TalentEdit edit) {
@@ -265,6 +288,7 @@ public final class EditorPatchService {
         .icon(edit.icon())
         .hpRestore(edit.hpRestore())
         .resourceRestore(edit.resourceRestore())
+        .effectEdits(edit.effectEdits())
         .build();
   }
 
@@ -292,6 +316,7 @@ public final class EditorPatchService {
         .spirit(edit.spirit())
         .vitality(edit.vitality())
         .speed(edit.speed())
+        .arrayEdits(edit.arrayEdits())
         .build();
   }
 
@@ -320,7 +345,8 @@ public final class EditorPatchService {
       List<ItemPatch> itemPatches,
       List<MonsterPatch> monsterPatches,
       List<StatusPatch> statusPatches,
-      boolean classPatchRequested) {
+      boolean resistanceOverflowPatchRequested,
+      boolean equipmentBonusPatchRequested) {
 
     static PatchBuildPlan from(PatchBuildRequest request) {
       if (request == null || request.workspace() == null) {
@@ -334,7 +360,8 @@ public final class EditorPatchService {
           request.itemEdits().stream().map(EditorPatchService::itemPatch).toList(),
           request.monsterEdits().stream().map(EditorPatchService::patch).toList(),
           request.statusEdits().stream().map(EditorPatchService::patch).toList(),
-          request.classPatchRequested());
+          request.resistanceOverflowPatchRequested(),
+          request.equipmentBonusPatchRequested());
     }
 
     boolean hasGameDataPatches() {
@@ -346,7 +373,11 @@ public final class EditorPatchService {
     }
 
     boolean hasWork() {
-      return hasGameDataPatches() || !itemPatches.isEmpty() || classPatchRequested;
+      return hasGameDataPatches() || !itemPatches.isEmpty() || classPatchRequested();
+    }
+
+    boolean classPatchRequested() {
+      return resistanceOverflowPatchRequested || equipmentBonusPatchRequested;
     }
   }
 }

@@ -33,16 +33,16 @@ public final class GameDatTalentPatcher {
       byte[] data, TalentSections sections, TalentPatch patch, PatchSummary summary) {
     List<TalentOffsets> offsets = patch.group() ? sections.group() : sections.hero();
     if (invalidTalentId(patch, offsets)) {
-      summary.skipped++;
+      summary.incrementSkipped();
       return;
     }
     TalentOffsets o = offsets.get(patch.talentId());
     if (o.getMetaOffset() < 0 || o.getAmountOffset() < 0) {
-      summary.skipped++;
+      summary.incrementSkipped();
       return;
     }
     writePatch(data, o, patch);
-    summary.talentAmount++;
+    summary.incrementTalentAmount();
   }
 
   private static boolean invalidTalentId(TalentPatch patch, List<TalentOffsets> offsets) {

@@ -1,5 +1,7 @@
 package com.vddoh.editor.data;
 
+import java.util.Collections;
+import java.util.List;
 import lombok.Builder;
 import lombok.With;
 
@@ -14,4 +16,10 @@ public record MonsterEdit(
     int strength,
     int spirit,
     int vitality,
-    int speed) {}
+    int speed,
+    List<MonsterArrayEntryEdit> arrayEdits) {
+
+  public MonsterEdit {
+    arrayEdits = arrayEdits == null ? Collections.emptyList() : List.copyOf(arrayEdits);
+  }
+}

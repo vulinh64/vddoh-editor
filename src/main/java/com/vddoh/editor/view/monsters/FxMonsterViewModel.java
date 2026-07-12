@@ -4,6 +4,8 @@ import com.vddoh.editor.data.MonsterEdit;
 import com.vddoh.editor.data.MonsterSnapshot;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 public record FxMonsterViewModel(
     MonsterSnapshot monster,
@@ -14,7 +16,8 @@ public record FxMonsterViewModel(
     IntegerProperty strength,
     IntegerProperty spirit,
     IntegerProperty vitality,
-    IntegerProperty speed) {
+    IntegerProperty speed,
+    ObservableList<FxMonsterArrayEntryViewModel> arrayEntries) {
 
   public FxMonsterViewModel(MonsterSnapshot monster) {
     this(
@@ -26,7 +29,9 @@ public record FxMonsterViewModel(
         new SimpleIntegerProperty(monster.strength()),
         new SimpleIntegerProperty(monster.spirit()),
         new SimpleIntegerProperty(monster.vitality()),
-        new SimpleIntegerProperty(monster.speed()));
+        new SimpleIntegerProperty(monster.speed()),
+        FXCollections.observableArrayList(
+            monster.arrayEntries().stream().map(FxMonsterArrayEntryViewModel::new).toList()));
   }
 
   public int id() {
@@ -121,6 +126,10 @@ public record FxMonsterViewModel(
     return monster.notes();
   }
 
+  public ObservableList<FxMonsterArrayEntryViewModel> arrayEntryRows() {
+    return arrayEntries;
+  }
+
   public boolean changed() {
     return experience.get() != monster.experience()
         || filar.get() != monster.filar()
@@ -129,7 +138,8 @@ public record FxMonsterViewModel(
         || strength.get() != monster.strength()
         || spirit.get() != monster.spirit()
         || vitality.get() != monster.vitality()
-        || speed.get() != monster.speed();
+        || speed.get() != monster.speed()
+        || arrayEntries.stream().anyMatch(FxMonsterArrayEntryViewModel::changed);
   }
 
   public void reset() {
@@ -141,6 +151,7 @@ public record FxMonsterViewModel(
     spirit.set(monster.spirit());
     vitality.set(monster.vitality());
     speed.set(monster.speed());
+    arrayEntries.forEach(FxMonsterArrayEntryViewModel::reset);
   }
 
   public MonsterEdit toEdit() {
@@ -148,12 +159,17 @@ public record FxMonsterViewModel(
         .monsterId(id())
         .experience(checked(experience.get(), 4095, "EXP"))
         .filar(checked(filar.get(), 4095, "Filar"))
-        .deathValue(checked(deathValue.get(), 127, "Death Value"))
+        .deathValue(checked(deathValue.get(), 127, "Soul Restore"))
         .effectId(checked(effectId.get(), 255, "Effect ID"))
         .strength(checked(strength.get(), 127, "STR-like"))
         .spirit(checked(spirit.get(), 127, "SPI-like"))
         .vitality(checked(vitality.get(), 127, "VIT-like"))
         .speed(checked(speed.get(), 127, "SPD-like"))
+        .arrayEdits(
+            arrayEntries.stream()
+                .filter(FxMonsterArrayEntryViewModel::changed)
+                .map(FxMonsterArrayEntryViewModel::toEdit)
+                .toList())
         .build();
   }
 

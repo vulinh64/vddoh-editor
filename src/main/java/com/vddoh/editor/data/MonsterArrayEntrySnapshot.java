@@ -5,13 +5,12 @@ import lombok.With;
 
 @Builder
 @With
-public record ItemEffectSnapshot(
+public record MonsterArrayEntrySnapshot(
     String side,
     String type,
+    int index,
     String target,
-    String value,
-    String extra,
-    String raw,
+    int value,
     boolean editable,
-    int numericValue,
-    int max) {}
+    int max,
+    String raw) {}

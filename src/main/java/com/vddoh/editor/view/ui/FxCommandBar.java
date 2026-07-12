@@ -28,7 +28,10 @@ public final class FxCommandBar extends HBox {
   private final FxEditorState state;
   private final TextField inputJar = new TextField("jar/vddoh.jar");
   private final TextField outputJar = new TextField();
+  private static final String DEFAULT_OUTPUT_FILE = "vddoh-edited.jar";
   private final CheckBox patchResistanceOverflow = new CheckBox("Patch resistance overflow");
+  private final CheckBox patchEquipmentBonus = new CheckBox("Patch equipment bonus overwrite");
+  private Path latestOutputJar;
 
   public FxCommandBar(Stage owner, FxEditorState state) {
     this.owner = owner;
@@ -37,13 +40,17 @@ public final class FxCommandBar extends HBox {
     setPadding(new Insets(8));
     setSpacing(8);
     outputJar.setEditable(false);
+    outputJar.setOnMouseClicked(_ -> chooseOutputJar());
+    outputJar.setFocusTraversable(false);
 
     Button browse = new Button("...");
     browse.setOnAction(_ -> chooseInputJar());
     Button load = new Button("Load");
     load.setDefaultButton(true);
     load.setOnAction(_ -> loadSelectedJar(load));
-    Button build = new Button("Build Patched JAR");
+    Button buildDataOnly = new Button("Build Data-Only JAR");
+    buildDataOnly.setOnAction(_ -> buildDataOnlyJar(buildDataOnly));
+    Button build = new Button("Build Full Patched JAR");
     build.setOnAction(_ -> buildPatchedJar(build));
     Button view = new Button("View");
     view.setOnAction(_ -> viewOutputJar());
@@ -51,6 +58,8 @@ public final class FxCommandBar extends HBox {
         .selectedProperty()
         .bindBidirectional(state.patchResistanceOverflowProperty());
     patchResistanceOverflow.setDisable(true);
+    patchEquipmentBonus.selectedProperty().bindBidirectional(state.patchEquipmentBonusProperty());
+    patchEquipmentBonus.setDisable(true);
 
     HBox.setHgrow(inputJar, Priority.ALWAYS);
     HBox.setHgrow(outputJar, Priority.ALWAYS);
@@ -63,6 +72,8 @@ public final class FxCommandBar extends HBox {
             new Label("Output preview"),
             outputJar,
             patchResistanceOverflow,
+            patchEquipmentBonus,
+            buildDataOnly,
             build,
             view);
   }
@@ -74,6 +85,30 @@ public final class FxCommandBar extends HBox {
     File chosen = chooser.showOpenDialog(owner);
     if (chosen != null) {
       inputJar.setText(chosen.toPath().toString());
+    }
+  }
+
+  private void chooseOutputJar() {
+    EditorWorkspace workspace = state.workspace();
+    if (workspace == null) {
+      state.status("Load a VDDOH JAR before choosing an output location.");
+      return;
+    }
+    FileChooser chooser = new FileChooser();
+    chooser.setTitle("Choose Patched JAR Output");
+    chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JAR files", "*.jar"));
+    Path initial = latestOutputJar == null ? workspace.outputJar() : latestOutputJar;
+    Path initialDirectory = initial.toAbsolutePath().normalize().getParent();
+    if (initialDirectory != null && Files.isDirectory(initialDirectory)) {
+      chooser.setInitialDirectory(initialDirectory.toFile());
+    }
+    chooser.setInitialFileName(DEFAULT_OUTPUT_FILE);
+    File chosen = chooser.showSaveDialog(owner);
+    if (chosen != null) {
+      Path selected = ensureJarExtension(chosen.toPath()).toAbsolutePath().normalize();
+      state.outputJar(selected);
+      setLatestOutputJar(selected);
+      state.status("Output JAR set to " + selected);
     }
   }
 
@@ -92,14 +127,16 @@ public final class FxCommandBar extends HBox {
         _ -> {
           EditorWorkspace workspace = task.getValue();
           state.workspace(workspace);
-          outputJar.setText(workspace.outputJar().toString());
+          setLatestOutputJar(workspace.outputJar());
           updateResistanceOverflowControl(workspace);
+          updateEquipmentBonusControl(workspace);
           state.status(
-              "Loaded %d items from %s. Resistance patch state: %s"
+              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s"
                   .formatted(
                       workspace.items().size(),
                       workspace.inputJar().getFileName(),
-                      workspace.resistanceOverflowState()));
+                      workspace.resistanceOverflowState(),
+                      workspace.equipmentBonusState()));
           load.disableProperty().unbind();
           load.setDisable(false);
         });
@@ -139,37 +176,62 @@ public final class FxCommandBar extends HBox {
     }
   }
 
+  private void updateEquipmentBonusControl(EditorWorkspace workspace) {
+    switch (workspace.equipmentBonusState()) {
+      case "PATCHED" -> {
+        state.patchEquipmentBonus(true);
+        patchEquipmentBonus.setDisable(true);
+        patchEquipmentBonus.setTooltip(
+            new javafx.scene.control.Tooltip("Input JAR already accumulates equipment bonuses."));
+      }
+      case "ORIGINAL" -> {
+        state.patchEquipmentBonus(false);
+        patchEquipmentBonus.setDisable(false);
+        patchEquipmentBonus.setTooltip(
+            new javafx.scene.control.Tooltip(
+                "Enable to patch g.class equipment byte_d overwrite into accumulation."));
+      }
+      default -> {
+        state.patchEquipmentBonus(false);
+        patchEquipmentBonus.setDisable(true);
+        patchEquipmentBonus.setTooltip(
+            new javafx.scene.control.Tooltip("Unsupported g.class layout; patch disabled."));
+      }
+    }
+  }
+
   private void buildPatchedJar(Button build) {
-    boolean classPatchRequested =
+    boolean resistanceOverflowPatchRequested =
         state.patchResistanceOverflow() && !patchResistanceOverflow.isDisable();
+    boolean equipmentBonusPatchRequested =
+        state.patchEquipmentBonus() && !patchEquipmentBonus.isDisable();
     Task<BuildResult> task =
         new Task<>() {
           @Override
           protected BuildResult call() throws Exception {
             return EditorPatchService.buildFullPatch(
-                PatchBuildRequest.builder()
-                    .workspace(state.workspace())
-                    .skillEdits(state.skillEdits())
-                    .talentEdits(state.talentEdits())
-                    .heroEdits(state.heroEdits())
-                    .itemEdits(state.itemEdits())
-                    .monsterEdits(state.monsterEdits())
-                    .statusEdits(state.statusEdits())
-                    .classPatchRequested(classPatchRequested)
+                basePatchBuildRequest()
+                    .resistanceOverflowPatchRequested(resistanceOverflowPatchRequested)
+                    .equipmentBonusPatchRequested(equipmentBonusPatchRequested)
                     .build());
           }
         };
     build.disableProperty().bind(task.runningProperty());
-    state.status("Building patched JAR...");
+    state.status("Building full patched JAR...");
     task.setOnSucceeded(
         _ -> {
           BuildResult result = task.getValue();
+          setLatestOutputJar(result.outputJar());
           state.status("Wrote %s (%s)".formatted(result.outputJar(), result.summary()));
           build.disableProperty().unbind();
           build.setDisable(false);
-          if (classPatchRequested) {
+          if (resistanceOverflowPatchRequested) {
             patchResistanceOverflow.setSelected(true);
             patchResistanceOverflow.setDisable(true);
+          }
+          if (equipmentBonusPatchRequested) {
+            patchEquipmentBonus.setSelected(true);
+            patchEquipmentBonus.setDisable(true);
           }
         });
     task.setOnFailed(
@@ -185,17 +247,74 @@ public final class FxCommandBar extends HBox {
     thread.start();
   }
 
+  private void buildDataOnlyJar(Button build) {
+    Task<BuildResult> task =
+        new Task<>() {
+          @Override
+          protected BuildResult call() throws Exception {
+            return EditorPatchService.buildFullPatch(
+                basePatchBuildRequest()
+                    .resistanceOverflowPatchRequested(false)
+                    .equipmentBonusPatchRequested(false)
+                    .build());
+          }
+        };
+    build.disableProperty().bind(task.runningProperty());
+    state.status("Building data-only JAR...");
+    task.setOnSucceeded(
+        _ -> {
+          BuildResult result = task.getValue();
+          setLatestOutputJar(result.outputJar());
+          state.status("Wrote %s (%s)".formatted(result.outputJar(), result.summary()));
+          build.disableProperty().unbind();
+          build.setDisable(false);
+        });
+    task.setOnFailed(
+        _ -> {
+          Throwable error = task.getException();
+          state.status("Data-only build failed: " + error.getMessage());
+          FxDialogs.showError("Unable to build data-only JAR", error);
+          build.disableProperty().unbind();
+          build.setDisable(false);
+        });
+    Thread thread = new Thread(task, "vddoh-fx-data-only-patch");
+    thread.setDaemon(true);
+    thread.start();
+  }
+
+  private PatchBuildRequest.PatchBuildRequestBuilder basePatchBuildRequest() {
+    return PatchBuildRequest.builder()
+        .workspace(state.buildWorkspace())
+        .skillEdits(state.skillEdits())
+        .talentEdits(state.talentEdits())
+        .heroEdits(state.heroEdits())
+        .itemEdits(state.itemEdits())
+        .monsterEdits(state.monsterEdits())
+        .statusEdits(state.statusEdits());
+  }
+
   private void viewOutputJar() {
     try {
       EditorWorkspace workspace = state.workspace();
       if (workspace == null) {
         throw new IllegalStateException("Load a VDDOH JAR before opening the output location.");
       }
-      revealInFileManager(workspace.outputJar().toAbsolutePath().normalize());
+      revealInFileManager(latestOutputJar.toAbsolutePath().normalize());
     } catch (Exception ex) {
       state.status("Unable to open output location: " + ex.getMessage());
       FxDialogs.showError("Unable to open output location", ex);
     }
+  }
+
+  private void setLatestOutputJar(Path path) {
+    latestOutputJar = path;
+    state.outputJar(path);
+    outputJar.setText(path.toString());
+  }
+
+  private static Path ensureJarExtension(Path path) {
+    String text = path.toString();
+    return text.toLowerCase().endsWith(".jar") ? path : Path.of(text + ".jar");
   }
 
   private static void revealInFileManager(Path target) throws IOException {

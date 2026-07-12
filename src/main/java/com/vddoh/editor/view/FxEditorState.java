@@ -7,6 +7,7 @@ import com.vddoh.editor.data.MonsterEdit;
 import com.vddoh.editor.data.SkillEdit;
 import com.vddoh.editor.data.StatusEdit;
 import com.vddoh.editor.data.TalentEdit;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Supplier;
 import javafx.beans.property.BooleanProperty;
@@ -19,8 +20,10 @@ import javafx.beans.property.StringProperty;
 public final class FxEditorState {
 
   private final ObjectProperty<EditorWorkspace> workspace = new SimpleObjectProperty<>();
+  private final ObjectProperty<Path> outputJar = new SimpleObjectProperty<>();
   private final StringProperty status = new SimpleStringProperty("Choose a VDDOH JAR to begin.");
   private final BooleanProperty patchResistanceOverflow = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchEquipmentBonus = new SimpleBooleanProperty(false);
   private Supplier<List<SkillEdit>> skillEdits = List::of;
   private Supplier<List<TalentEdit>> talentEdits = List::of;
   private Supplier<List<HeroEdit>> heroEdits = List::of;
@@ -38,6 +41,20 @@ public final class FxEditorState {
 
   public void workspace(EditorWorkspace workspace) {
     this.workspace.set(workspace);
+  }
+
+  public Path outputJar() {
+    return outputJar.get();
+  }
+
+  public void outputJar(Path outputJar) {
+    this.outputJar.set(outputJar);
+  }
+
+  public EditorWorkspace buildWorkspace() {
+    EditorWorkspace current = workspace();
+    Path output = outputJar();
+    return current == null || output == null ? current : current.withOutputJar(output);
   }
 
   public StringProperty statusProperty() {
@@ -58,6 +75,18 @@ public final class FxEditorState {
 
   public void patchResistanceOverflow(boolean patchResistanceOverflow) {
     this.patchResistanceOverflow.set(patchResistanceOverflow);
+  }
+
+  public BooleanProperty patchEquipmentBonusProperty() {
+    return patchEquipmentBonus;
+  }
+
+  public boolean patchEquipmentBonus() {
+    return patchEquipmentBonus.get();
+  }
+
+  public void patchEquipmentBonus(boolean patchEquipmentBonus) {
+    this.patchEquipmentBonus.set(patchEquipmentBonus);
   }
 
   public void skillEditsSupplier(Supplier<List<SkillEdit>> skillEdits) {

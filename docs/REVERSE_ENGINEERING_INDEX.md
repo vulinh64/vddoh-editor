@@ -119,10 +119,11 @@ In `src/main/java/com/vddoh/editor/`:
 | `service/GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
 | `service/GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
 | `service/GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |
-| `service/GameDatMonsterPatcher.java` | Writes conservative monster v1 fields: EXP, Filar, Death Value, tail Effect ID, and packed STR/SPI/VIT/SPD-like core stat bytes. |
-| `service/ItemDatPatcher.java` | Writes safe item top-level fields. |
+| `service/GameDatMonsterPatcher.java` | Writes conservative monster fields: EXP, Filar, Soul Restore, tail Effect ID, packed STR/SPI/VIT/SPD-like core stat bytes, and existing fixed-width effect/resistance/drop array entries. |
+| `service/ItemDatPatcher.java` | Writes safe item top-level fields and existing fixed-width decoded effect bytes. |
 | `service/GameDatStatusPatcher.java` | Writes safe status fields. |
 | `service/ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow; uses Class-File API semantic detection plus byte-minimal raw replacement. |
+| `service/EquipmentBonusClassPatcher.java` | Optional `g.class` bytecode patch for the equipment `byte_d` overwrite quirk; uses Class-File API to transform four assignment sites in `g.b()V` into accumulation sites. |
 | `utils/EditorSupport.java` | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers. |
 
 ## Future Direction

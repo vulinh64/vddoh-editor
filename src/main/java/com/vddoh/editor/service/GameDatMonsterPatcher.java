@@ -7,7 +7,10 @@ import static com.vddoh.editor.utils.EditorSupport.writeMonsterHeader;
 import com.vddoh.editor.data.*;
 import com.vddoh.editor.utils.EditorSupport;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,13 +18,15 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class GameDatMonsterPatcher {
 
+  private static final Pattern ARRAY_KEY = Pattern.compile("([a-zA-Z]+)\\[(\\d+)]");
+
   public static PatchSummary patch(byte[] data, List<MonsterPatch> patches) {
     log.info("Applying {} monster patches", patches.size());
     PatchSummary summary = new PatchSummary();
     MonsterOffsets[] offsets = parseMonsterOffsets(data);
     for (MonsterPatch patch : patches) {
       if (patch.monsterId() < 0 || patch.monsterId() >= offsets.length) {
-        summary.skipped++;
+        summary.incrementSkipped();
         continue;
       }
       MonsterOffsets o = offsets[patch.monsterId()];
@@ -30,9 +35,10 @@ public final class GameDatMonsterPatcher {
       writeMonsterCoreStats(
           data, o.tailOffset(), patch.strength(), patch.spirit(), patch.vitality(), patch.speed());
       data[o.effectOffset()] = EditorSupport.checkedByte(patch.effectId(), "monster effect id");
-      summary.monsterHeader++;
-      summary.monsterCoreStats++;
-      summary.monsterEffect++;
+      writeArrayEntries(data, o, patch, summary);
+      summary.incrementMonsterHeader();
+      summary.incrementMonsterCoreStats();
+      summary.incrementMonsterEffect();
     }
     log.info("Monster patch summary: {}", summary);
     return summary;
@@ -45,7 +51,8 @@ public final class GameDatMonsterPatcher {
       int nameLen = u8(data[n]);
       n += 1 + nameLen;
       int fixedOffset = n;
-      n = getN(data, n);
+      ParsedMonsterArrays arrays = parseArrays(data, n);
+      n = arrays.nextOffset();
       int tailOffset = n;
       int effectOffset = tailOffset + 12;
       n += 13;
@@ -54,9 +61,141 @@ public final class GameDatMonsterPatcher {
               .fixedOffset(fixedOffset)
               .tailOffset(tailOffset)
               .effectOffset(effectOffset)
+              .effectsOffset(arrays.effectsOffset())
+              .effectsCount(arrays.effectsCount())
+              .resistAOffset(arrays.resistAOffset())
+              .resistACount(arrays.resistACount())
+              .resistBOffset(arrays.resistBOffset())
+              .resistBCount(arrays.resistBCount())
+              .bytesDOffset(arrays.bytesDOffset())
+              .bytesDCount(arrays.bytesDCount())
+              .dropsOffset(arrays.dropsOffset())
+              .dropsCount(arrays.dropsCount())
               .build();
     }
     return offsets;
+  }
+
+  private static ParsedMonsterArrays parseArrays(byte[] data, int n) {
+    n += 4;
+    int flags = u8(data[n++]);
+    int len = u8(data[n++]);
+    for (int j = 0; j < len; j++) {
+      n += 2;
+      if ((data[n - 1] & 1) != 0) {
+        n++;
+      }
+    }
+    int effectsOffset = n + 1;
+    int effectsCount = u8(data[n++]);
+    n += effectsCount * 3;
+    int resistAOffset = -1;
+    int resistACount = 0;
+    if ((flags & 8) != 0) {
+      resistAOffset = n + 1;
+      resistACount = u8(data[n++]);
+      n += resistACount * 2;
+    }
+    int resistBOffset = -1;
+    int resistBCount = 0;
+    if ((flags & 4) != 0) {
+      resistBOffset = n + 1;
+      resistBCount = u8(data[n++]);
+      n += resistBCount * 2;
+    }
+    int bytesDOffset = -1;
+    int bytesDCount = 0;
+    if ((flags & 2) != 0) {
+      bytesDOffset = n + 1;
+      bytesDCount = u8(data[n++]);
+      n += bytesDCount;
+    }
+    int dropsOffset = n + 1;
+    int dropsCount = u8(data[n++]);
+    n += dropsCount * 2;
+    return ParsedMonsterArrays.builder()
+        .effectsOffset(effectsOffset)
+        .effectsCount(effectsCount)
+        .resistAOffset(resistAOffset)
+        .resistACount(resistACount)
+        .resistBOffset(resistBOffset)
+        .resistBCount(resistBCount)
+        .bytesDOffset(bytesDOffset)
+        .bytesDCount(bytesDCount)
+        .dropsOffset(dropsOffset)
+        .dropsCount(dropsCount)
+        .nextOffset(n)
+        .build();
+  }
+
+  private static void writeArrayEntries(
+      byte[] data, MonsterOffsets offsets, MonsterPatch patch, PatchSummary summary) {
+    for (MonsterArrayEntryEdit edit : patch.arrayEdits()) {
+      if (writeArrayEntry(data, offsets, edit)) {
+        summary.incrementMonsterEffect();
+      } else {
+        summary.incrementSkipped();
+      }
+    }
+  }
+
+  private static boolean writeArrayEntry(
+      byte[] data, MonsterOffsets offsets, MonsterArrayEntryEdit edit) {
+    Matcher matcher = ARRAY_KEY.matcher(edit.raw());
+    if (!matcher.matches()) {
+      return false;
+    }
+    String key = matcher.group(1);
+    int index = Integer.parseInt(matcher.group(2));
+    return switch (key) {
+      case "effects" ->
+          writeThreeByteEntry(
+              data, offsets.effectsOffset(), offsets.effectsCount(), index, edit.value());
+      case "resistA" ->
+          writeShortEntry(
+              data, offsets.resistAOffset(), offsets.resistACount(), index, edit.value());
+      case "resistB" ->
+          writeShortEntry(
+              data, offsets.resistBOffset(), offsets.resistBCount(), index, edit.value());
+      case "bytesD" ->
+          writeByteEntry(data, offsets.bytesDOffset(), offsets.bytesDCount(), index, edit.value());
+      case "drops" ->
+          writeShortEntry(data, offsets.dropsOffset(), offsets.dropsCount(), index, edit.value());
+      default -> false;
+    };
+  }
+
+  private static boolean writeThreeByteEntry(
+      byte[] data, int offset, int count, int index, int value) {
+    if (offset < 0 || index < 0 || index >= count) {
+      return false;
+    }
+    int checked = EditorSupport.checkedRange(value, 0, 0x00ffffff, "monster packed effect");
+    int n = offset + index * 3;
+    data[n] = EditorSupport.checkedByte((checked >>> 16) & 0xff, "monster packed effect high");
+    data[n + 1] = EditorSupport.checkedByte((checked >>> 8) & 0xff, "monster packed effect mid");
+    data[n + 2] = EditorSupport.checkedByte(checked & 0xff, "monster packed effect low");
+    return true;
+  }
+
+  private static boolean writeShortEntry(byte[] data, int offset, int count, int index, int value) {
+    if (offset < 0 || index < 0 || index >= count) {
+      return false;
+    }
+    int checked = EditorSupport.checkedRange(value, 0, 0xffff, "monster packed short");
+    data[offset + index * 2] =
+        EditorSupport.checkedByte((checked >>> 8) & 0xff, "monster packed short high");
+    data[offset + index * 2 + 1] =
+        EditorSupport.checkedByte(checked & 0xff, "monster packed short low");
+    return true;
+  }
+
+  private static boolean writeByteEntry(byte[] data, int offset, int count, int index, int value) {
+    if (offset < 0 || index < 0 || index >= count) {
+      return false;
+    }
+    data[offset + index] = EditorSupport.checkedByte(value, "monster byte-array value");
+    return true;
   }
 
   private static void writeMonsterCoreStats(
@@ -123,4 +262,18 @@ public final class GameDatMonsterPatcher {
     n += len * 2;
     return n;
   }
+
+  @Builder
+  private record ParsedMonsterArrays(
+      int effectsOffset,
+      int effectsCount,
+      int resistAOffset,
+      int resistACount,
+      int resistBOffset,
+      int resistBCount,
+      int bytesDOffset,
+      int bytesDCount,
+      int dropsOffset,
+      int dropsCount,
+      int nextOffset) {}
 }

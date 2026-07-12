@@ -1,5 +1,7 @@
 package com.vddoh.editor.data;
 
+import java.util.Collections;
+import java.util.List;
 import lombok.Builder;
 import lombok.With;
 
@@ -30,4 +32,10 @@ public record MonsterSnapshot(
     int actionCount,
     int effectCount,
     int dropCount,
-    String notes) {}
+    List<MonsterArrayEntrySnapshot> arrayEntries,
+    String notes) {
+
+  public MonsterSnapshot {
+    arrayEntries = arrayEntries == null ? Collections.emptyList() : List.copyOf(arrayEntries);
+  }
+}

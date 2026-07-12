@@ -3,29 +3,39 @@ package com.vddoh.editor.view.items;
 import com.vddoh.editor.data.ItemSnapshot;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.FxNavigation;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TitledPane;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.util.converter.IntegerStringConverter;
 
 public final class FxItemDetailPane extends ScrollPane {
 
   public static final String READ_ONLY_HINT = "read-only";
+  public static final String WEAPON_SIDE = "Weapon";
   private final FxEditorState state;
   private final FxNavigation navigation;
   private final ObjectProperty<FxItemViewModel> selectedItem = new SimpleObjectProperty<>();
@@ -56,16 +66,28 @@ public final class FxItemDetailPane extends ScrollPane {
       return;
     }
     ItemSnapshot item = viewModel.item();
-    content
-        .getChildren()
-        .addAll(
-            new Label("%d - %s".formatted(item.id(), item.name())),
-            pane("Basic", basicGrid(viewModel)),
-            pane("Equipment", equipmentGrid(viewModel)),
-            pane("Consumable", consumableGrid(viewModel)),
-            pane("Linked Skill", linkedSkillBox(viewModel)),
-            pane("Decoded Effects", effectsTable(viewModel)),
-            pane("Raw Diagnostics", rawGrid(item)));
+    List<Node> panes = new ArrayList<>();
+    panes.add(new Label("%d - %s".formatted(item.id(), item.name())));
+    panes.add(pane("Basic", basicGrid(viewModel)));
+    if (hasEquipmentDetails(item)) {
+      panes.add(pane("Equipment", equipmentGrid(viewModel)));
+    }
+    if (item.category() == 9 || item.category() == 10) {
+      panes.add(pane("Linked Skill", linkedSkillBox(viewModel)));
+    }
+    panes.add(
+        pane(
+            item.category() == 7 ? "Rune Effects" : "Decoded Effects",
+            item.category() == 7 ? runeEffectsBox(viewModel) : effectsTable(viewModel)));
+    panes.add(pane("Raw Diagnostics", rawGrid(item)));
+    content.getChildren().addAll(panes);
+  }
+
+  private static boolean hasEquipmentDetails(ItemSnapshot item) {
+    return switch (item.category()) {
+      case 1, 2, 3, 4, 7 -> true;
+      default -> false;
+    };
   }
 
   private static TitledPane pane(String title, javafx.scene.Node content) {
@@ -97,32 +119,6 @@ public final class FxItemDetailPane extends ScrollPane {
     addRow(grid, 4, "Weapon Mode", item.weaponMode(), "weapons only");
     addRow(grid, 5, "Stat Bonuses", viewModel.statBonusSummary(), "decoded packed stats");
     addRow(grid, 6, "Damage / Effects", viewModel.effectSummary(), "decoded effect rows");
-    return grid;
-  }
-
-  private static GridPane consumableGrid(FxItemViewModel viewModel) {
-    ItemSnapshot item = viewModel.item();
-    GridPane grid = grid();
-    String mode =
-        switch (item.category()) {
-          case 5 -> "Consumable";
-          case 6 -> "Permanent consumable";
-          case 9 -> "Battle-only consumable";
-          default -> "Not a consumable";
-        };
-    addRow(grid, 0, "Use Mode", mode, READ_ONLY_HINT);
-    if (item.category() == 5) {
-      addEditableRow(grid, 1, "HP Restore/Effect", viewModel.hpRestoreProperty(), 0xffff);
-      addEditableRow(
-          grid, 2, "Resource Restore/Effect", viewModel.resourceRestoreProperty(), 0xffff);
-    } else {
-      addRow(grid, 1, "HP Restore/Effect", item.hpRestore(), "not directly writable here");
-      addRow(
-          grid, 2, "Resource Restore/Effect", item.resourceRestore(), "not directly writable here");
-    }
-    if (item.category() == 6) {
-      addRow(grid, 3, "Permanent Bonus", "Max HP/Resource +5", "in-game use effect");
-    }
     return grid;
   }
 
@@ -160,18 +156,76 @@ public final class FxItemDetailPane extends ScrollPane {
   }
 
   private static TableView<FxItemEffectViewModel> effectsTable(FxItemViewModel viewModel) {
-    TableView<FxItemEffectViewModel> table = new TableView<>(viewModel.effects());
+    return effectsTable(List.copyOf(viewModel.effects()));
+  }
+
+  private static VBox runeEffectsBox(FxItemViewModel viewModel) {
+    List<FxItemEffectViewModel> effects = List.copyOf(viewModel.effects());
+    Set<String> commonKeys = runeCommonKeys(effects);
+    VBox box = new VBox(8);
+    box.getChildren()
+        .addAll(
+            pane("Common Effect", effectsTable(commonRuneEffects(effects, commonKeys))),
+            pane("Weapon Effect", effectsTable(runeSideEffects(effects, WEAPON_SIDE, commonKeys))),
+            pane("Armor Effect", effectsTable(runeSideEffects(effects, "Armor", commonKeys))));
+    return box;
+  }
+
+  private static List<FxItemEffectViewModel> commonRuneEffects(
+      List<FxItemEffectViewModel> effects, Set<String> commonKeys) {
+    Set<String> seen = new HashSet<>();
+    return effects.stream()
+        .filter(effect -> commonKeys.contains(commonKey(effect)))
+        .filter(effect -> WEAPON_SIDE.equals(effect.side()))
+        .filter(effect -> seen.add(commonKey(effect)))
+        .toList();
+  }
+
+  private static List<FxItemEffectViewModel> runeSideEffects(
+      List<FxItemEffectViewModel> effects, String side, Set<String> commonKeys) {
+    return effects.stream()
+        .filter(effect -> side.equals(effect.side()))
+        .filter(effect -> !commonKeys.contains(commonKey(effect)))
+        .toList();
+  }
+
+  private static Set<String> runeCommonKeys(List<FxItemEffectViewModel> effects) {
+    Set<String> weaponKeys = new HashSet<>();
+    Set<String> armorKeys = new HashSet<>();
+    for (FxItemEffectViewModel effect : effects) {
+      String key = commonKey(effect);
+      if (WEAPON_SIDE.equals(effect.side())) {
+        weaponKeys.add(key);
+      } else if ("Armor".equals(effect.side())) {
+        armorKeys.add(key);
+      }
+    }
+    weaponKeys.retainAll(armorKeys);
+    return weaponKeys;
+  }
+
+  private static String commonKey(FxItemEffectViewModel effect) {
+    return "%s|%s|%s|%s".formatted(effect.type(), effect.target(), effect.value(), effect.raw());
+  }
+
+  private static TableView<FxItemEffectViewModel> effectsTable(
+      List<FxItemEffectViewModel> effects) {
+    TableView<FxItemEffectViewModel> table =
+        new TableView<>(FXCollections.observableArrayList(effects));
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table.setPrefHeight(220);
+    table.setEditable(true);
     table
         .getColumns()
-        .addAll(
-            column("Side", "side"),
-            column("Type", "type"),
-            column("Target", "target"),
-            column("Value", "value"),
-            column("Extra", "extra"),
-            column("Raw", "raw"));
+        .setAll(
+            List.of(
+                column("Side", "side"),
+                column("Type", "type"),
+                column("Target", "target"),
+                editableValueColumn(),
+                column("Editable", "editable"),
+                column("Extra", "extra"),
+                column("Raw", "raw")));
     return table;
   }
 
@@ -230,12 +284,36 @@ public final class FxItemDetailPane extends ScrollPane {
           case "type" -> FxItemEffectViewModel::type;
           case "target" -> FxItemEffectViewModel::target;
           case "value" -> FxItemEffectViewModel::value;
+          case "editable" -> FxItemEffectViewModel::editable;
           case "extra" -> FxItemEffectViewModel::extra;
           case "raw" -> FxItemEffectViewModel::raw;
           default -> _ -> "";
         };
     column.setCellValueFactory(cell -> stringValue(value.apply(cell.getValue())));
     return column;
+  }
+
+  private static TableColumn<FxItemEffectViewModel, Integer> editableValueColumn() {
+    TableColumn<FxItemEffectViewModel, Integer> column = new TableColumn<>("Value");
+    column.setCellValueFactory(cell -> cell.getValue().valueProperty().asObject());
+    column.setCellFactory(_ -> readOnlyAwareIntegerCell());
+    column.setOnEditCommit(event -> event.getRowValue().valueProperty().set(event.getNewValue()));
+    column.setPrefWidth(90);
+    return column;
+  }
+
+  private static TableCell<FxItemEffectViewModel, Integer> readOnlyAwareIntegerCell() {
+    return new TextFieldTableCell<>(new IntegerStringConverter()) {
+      @Override
+      public void startEdit() {
+        if (getTableRow() == null
+            || !(getTableRow().getItem() instanceof FxItemEffectViewModel viewModel)
+            || !viewModel.canEditValue()) {
+          return;
+        }
+        super.startEdit();
+      }
+    };
   }
 
   private static ObservableValue<String> stringValue(String value) {

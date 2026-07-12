@@ -11,6 +11,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -32,7 +33,6 @@ public final class EditorSupport {
 
   private static final String PACKED_HERO_HEADER = "packed hero header";
   private static final String EQUIPMENT = "Equipment";
-  private static final String RUNE_EQUIPMENT = "Rune/Equipment";
   private static final String PACKED_HERO_STATS = "packed hero stat";
   public static final String PACKED_STAT = "Packed Stat";
   public static final String ME_LIB_INTERNAL = "me-lib";
@@ -50,6 +50,9 @@ public final class EditorSupport {
     {2, 8, 4},
     {2, 2, 1}
   };
+  public static final String BYTE_D = "byte_d";
+  public static final String ARMOR_SIDE = "Armor";
+  public static final String SHORT_ARR_B_RAW = "short_arr_b";
 
   public static Path editorUserPath(String child) {
     return Path.of(System.getProperty("user.home"), ".vddoh-editor", child);
@@ -265,14 +268,14 @@ public final class EditorSupport {
       throw new IllegalArgumentException("monster Filar must be 0..4095");
     }
     if (deathValue < 0 || deathValue > 127) {
-      throw new IllegalArgumentException("monster death value must be 0..127");
+      throw new IllegalArgumentException("monster soul restore must be 0..127");
     }
     data[offset] = checkedByte((experience >>> 4) & 0xff, "monster EXP high");
     data[offset + 1] =
         checkedByte(
             ((experience & 0x0f) << 4) | ((filar >>> 8) & 0x0f), "packed monster EXP/Filar");
     data[offset + 2] = checkedByte(filar & 0xff, "monster Filar low");
-    data[offset + 3] = checkedByte(deathValue, "monster death value");
+    data[offset + 3] = checkedByte(deathValue, "monster soul restore");
   }
 
   public static String[] decodedNames(Object[] values, Method decode) {
@@ -294,10 +297,10 @@ public final class EditorSupport {
     String packedStatSide =
         switch (category) {
           case 5 -> "Consumable stat boost";
-          case 7 -> RUNE_EQUIPMENT;
+          case 7 -> "Rune";
           default -> EQUIPMENT;
         };
-    appendPackedItemStats(rows, item, packedStatSide);
+    appendPackedItemStats(rows, item, packedStatSide, category);
     appendItemArrays(rows, item, category, statusNames);
     appendConsumableUseEffect(rows, item, category);
     appendLinkedSkill(rows, item, category, skillNames);
@@ -334,44 +337,115 @@ public final class EditorSupport {
   }
 
   private static void appendPackedItemStats(
-      List<ItemEffectRow> rows, Object item, String packedStatSide) {
-    appendPackedStat(rows, packedStatSide, 0, shortValue(raw(item, 8)), "short_c");
-    appendPackedStat(rows, packedStatSide, 2, shortValue(raw(item, 9)), "short_d");
-    appendPackedStat(rows, packedStatSide, 4, shortValue(raw(item, 10)), "short_e");
-    appendPackedStat(rows, packedStatSide, 6, shortValue(raw(item, 11)), "short_f");
+      List<ItemEffectRow> rows, Object item, String packedStatSide, int category) {
+    appendPackedStat(rows, packedStatSide, 0, shortValue(raw(item, 8)), "short_c", category);
+    appendPackedStat(rows, packedStatSide, 2, shortValue(raw(item, 9)), "short_d", category);
+    appendPackedStat(rows, packedStatSide, 4, shortValue(raw(item, 10)), "short_e", category);
+    appendPackedStat(rows, packedStatSide, 6, shortValue(raw(item, 11)), "short_f", category);
     int misc = u8(raw(item, 12));
     if (misc != 0) {
       rows.add(
           ItemEffectRow.of(
               packedStatSide,
               PACKED_STAT,
-              statName(8),
+              ItemEffectLabel.packedStatTarget(category, 8, BYTE_D, statName(8)),
               String.valueOf(misc),
-              StringUtils.EMPTY,
-              "byte_d"));
+              ItemEffectLabel.packedStatExtra(category, 8, BYTE_D, StringUtils.EMPTY),
+              BYTE_D));
     }
   }
 
   private static void appendItemArrays(
       List<ItemEffectRow> rows, Object item, int category, String[] statusNames) {
-    appendIntEffects(
-        rows,
-        category == 7 ? "Weapon effect" : "Equipment/Weapon",
-        intArray(raw(item, 13)),
-        "int_arr_a");
-    appendIntEffects(rows, "Armor effect", intArray(raw(item, 14)), "int_arr_b");
+    if (category == 7) {
+      appendRuneIntEffects(rows, WEAPON_SIDE, intArray(raw(item, 13)), "int_arr_a");
+      appendRuneIntEffects(rows, ARMOR_SIDE, intArray(raw(item, 14)), "int_arr_b");
+      appendRuneStatusEffects(rows, shortArray(raw(item, 16)), statusNames);
+      return;
+    }
+    appendIntEffects(rows, "Equipment/Weapon", intArray(raw(item, 13)), "int_arr_a", category);
+    appendIntEffects(rows, "Armor effect", intArray(raw(item, 14)), "int_arr_b", category);
     appendShortEffects(
         rows,
         category == 5 ? "Consumable status gate" : "Protection",
         shortArray(raw(item, 15)),
         statusNames,
-        "short_arr_a");
+        "short_arr_a",
+        category);
     appendShortEffects(
         rows,
-        category == 5 ? "Consumable status effect" : "On hit / item use",
+        shortArraySide(category),
         shortArray(raw(item, 16)),
         statusNames,
-        "short_arr_b");
+        SHORT_ARR_B_RAW,
+        category);
+  }
+
+  private static String shortArraySide(int category) {
+    return switch (category) {
+      case 2 -> "Protection";
+      case 5 -> "Consumable status effect";
+      default -> "On hit / item use";
+    };
+  }
+
+  private static void appendRuneIntEffects(
+      List<ItemEffectRow> rows, String side, int[] values, String rawName) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      int packed = values[i];
+      int kind = (packed >> 16) & 0xff;
+      int value = packed & 0xffff;
+      boolean armor = ARMOR_SIDE.equals(side);
+      boolean elemental = kind > 0 && kind <= 5;
+      String target = runeElementName(kind);
+      rows.add(
+          ItemEffectRow.of(
+              side,
+              elemental ? (armor ? "Anti-element" : "Element damage") : "Flat stat/damage",
+              armor && elemental ? "Anti-" + target.toLowerCase(Locale.ROOT) : target,
+              String.valueOf(value),
+              StringUtils.EMPTY,
+              "%s[%d]=%d".formatted(rawName, i, packed)));
+    }
+  }
+
+  private static void appendRuneStatusEffects(
+      List<ItemEffectRow> rows, short[] values, String[] statusNames) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      int packed = values[i] & 0xffff;
+      int id = (packed >> 8) & 0xff;
+      int rawChance = packed & 0xff;
+      String status = runeStatusName(statusLabel(id, statusNames));
+      rows.add(
+          ItemEffectRow.of(
+              WEAPON_SIDE,
+              "Status chance",
+              status,
+              String.valueOf(rawChance / runeStatusChanceDivisor(status)),
+              "%% chance, raw=%d".formatted(rawChance),
+              "%s[%d]:chance".formatted(SHORT_ARR_B_RAW, i)));
+      rows.add(
+          ItemEffectRow.of(
+              ARMOR_SIDE,
+              "Status resistance",
+              "Anti-" + status.toLowerCase(Locale.ROOT),
+              String.valueOf(rawChance),
+              "%",
+              "%s[%d]:armor".formatted(SHORT_ARR_B_RAW, i)));
+    }
+  }
+
+  private static String runeElementName(int id) {
+    String displayName = DamageEffectKind.elementName(id);
+    return displayName == null ? statName(id) : displayName;
+  }
+
+  private static String runeStatusName(String status) {
+    return status;
+  }
+
+  private static int runeStatusChanceDivisor(String status) {
+    return "Weak".equals(status) ? 15 : 5;
   }
 
   private static void appendConsumableUseEffect(
@@ -432,33 +506,41 @@ public final class EditorSupport {
   }
 
   public static void appendPackedStat(
-      List<ItemEffectRow> rows, String side, int baseStat, int packed, String rawName) {
+      List<ItemEffectRow> rows,
+      String side,
+      int baseStat,
+      int packed,
+      String rawName,
+      int category) {
     int high = (packed >> 8) & 0xff;
     int low = packed & 0xff;
     if (high != 0) {
-      rows.add(
-          ItemEffectRow.of(
-              side,
-              PACKED_STAT,
-              statName(baseStat),
-              String.valueOf(high),
-              StringUtils.EMPTY,
-              "%s:hi".formatted(rawName)));
+      appendPackedStatRow(rows, side, baseStat, high, "%s:hi".formatted(rawName), category);
     }
     if (low != 0) {
-      rows.add(
-          ItemEffectRow.of(
-              side,
-              PACKED_STAT,
-              statName(baseStat + 1),
-              String.valueOf(low),
-              StringUtils.EMPTY,
-              "%s:lo".formatted(rawName)));
+      appendPackedStatRow(rows, side, baseStat + 1, low, "%s:lo".formatted(rawName), category);
     }
   }
 
+  private static void appendPackedStatRow(
+      List<ItemEffectRow> rows, String side, int statId, int value, String rawName, int category) {
+    String target = ItemEffectLabel.packedStatTarget(category, statId, rawName, statName(statId));
+    if ("Rune".equals(side)) {
+      rows.add(
+          ItemEffectRow.of(
+              WEAPON_SIDE, PACKED_STAT, target, String.valueOf(value), StringUtils.EMPTY, rawName));
+      rows.add(
+          ItemEffectRow.of(
+              ARMOR_SIDE, PACKED_STAT, target, String.valueOf(value), StringUtils.EMPTY, rawName));
+      return;
+    }
+    rows.add(
+        ItemEffectRow.of(
+            side, PACKED_STAT, target, String.valueOf(value), StringUtils.EMPTY, rawName));
+  }
+
   public static void appendIntEffects(
-      List<ItemEffectRow> rows, String side, int[] values, String rawName) {
+      List<ItemEffectRow> rows, String side, int[] values, String rawName, int category) {
     for (int i = 0; values != null && i < values.length; i++) {
       int packed = values[i];
       int kind = (packed >> 16) & 0xff;
@@ -466,8 +548,8 @@ public final class EditorSupport {
       rows.add(
           ItemEffectRow.of(
               side,
-              effectKind(kind),
-              statName(kind),
+              ItemEffectLabel.intEffectType(category, kind, effectKind(kind)),
+              ItemEffectLabel.intEffectTarget(category, kind, statName(kind)),
               String.valueOf(value),
               StringUtils.EMPTY,
               "%s[%d]=%d".formatted(rawName, i, packed)));
@@ -475,16 +557,22 @@ public final class EditorSupport {
   }
 
   public static void appendShortEffects(
-      List<ItemEffectRow> rows, String side, short[] values, String[] statusNames, String rawName) {
+      List<ItemEffectRow> rows,
+      String side,
+      short[] values,
+      String[] statusNames,
+      String rawName,
+      int category) {
     for (int i = 0; values != null && i < values.length; i++) {
       int packed = values[i] & 0xffff;
       int id = (packed >> 8) & 0xff;
       int value = packed & 0xff;
+      String status = statusLabel(id, statusNames);
       rows.add(
           ItemEffectRow.of(
               side,
-              "Status",
-              statusLabel(id, statusNames),
+              category == 2 ? "Status resistance" : "Status",
+              ItemEffectLabel.statusTarget(category, status),
               String.valueOf(value),
               "%/value",
               rawName + "[" + i + "]=" + packed));
@@ -496,8 +584,8 @@ public final class EditorSupport {
       case 1 -> subtype == 0 ? "Ring" : "Neck";
       case 2 ->
           switch (subtype) {
-            case 0 -> "Main Body Armor";
-            case 1 -> "Head";
+            case 0 -> "Head";
+            case 1 -> "Main Body Armor";
             case 4 -> "Boot";
             default -> "Armor subtype " + subtype;
           };
@@ -667,7 +755,7 @@ public final class EditorSupport {
       "Bleed",
       "Blind",
       "Silence",
-      "Enfeeble",
+      "Weak",
       "Frenzy",
       "Confuse",
       "Shackle",
@@ -679,7 +767,11 @@ public final class EditorSupport {
   }
 
   public static String statusLabel(int id, String[] statusNames) {
-    return id >= 0 && id < statusNames.length ? statusNames[id] : "Status " + id;
+    return id >= 0 && id < statusNames.length ? statusDisplayName(statusNames[id]) : "Status " + id;
+  }
+
+  public static String statusDisplayName(String statusName) {
+    return "Rigor".equals(statusName) ? "Instant Death" : statusName;
   }
 
   @SneakyThrows
@@ -745,7 +837,10 @@ public final class EditorSupport {
     log.info("Replacing {} entries from {} into {}", replacements.size(), inputJar, outputJar);
     Set<String> seen = new HashSet<>();
     try (ZipInputStream in = new ZipInputStream(Files.newInputStream(inputJar));
-        ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(outputJar))) {
+        ZipOutputStream out =
+            new ZipOutputStream(
+                Files.newOutputStream(
+                    outputJar, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))) {
       ZipEntry entry;
       while ((entry = in.getNextEntry()) != null) {
         ZipEntry copy = new ZipEntry(entry.getName());
@@ -925,6 +1020,13 @@ public final class EditorSupport {
   public static int checked4Bit(int value, String label) {
     if (value < 0 || value > 15) {
       throw new IllegalArgumentException(label + " must be 0..15");
+    }
+    return value;
+  }
+
+  public static int checkedRange(int value, int min, int max, String label) {
+    if (value < min || value > max) {
+      throw new IllegalArgumentException("%s must be %d..%d".formatted(label, min, max));
     }
     return value;
   }

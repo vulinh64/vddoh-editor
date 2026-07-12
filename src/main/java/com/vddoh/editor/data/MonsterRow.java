@@ -1,6 +1,8 @@
 package com.vddoh.editor.data;
 
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
 import lombok.Builder;
 import lombok.With;
 
@@ -26,8 +28,13 @@ public record MonsterRow(
     int actionCount,
     int effectCount,
     int dropCount,
+    List<MonsterArrayEntrySnapshot> arrayEntries,
     String notes)
     implements Serializable {
+
+  public MonsterRow {
+    arrayEntries = arrayEntries == null ? Collections.emptyList() : List.copyOf(arrayEntries);
+  }
 
   public static MonsterRow of(
       int id,
@@ -48,7 +55,8 @@ public record MonsterRow(
       int packedChance,
       int actionCount,
       int effectCount,
-      int dropCount) {
+      int dropCount,
+      List<MonsterArrayEntrySnapshot> arrayEntries) {
     return MonsterRow.builder()
         .id(id)
         .name(name)
@@ -69,7 +77,9 @@ public record MonsterRow(
         .actionCount(actionCount)
         .effectCount(effectCount)
         .dropCount(dropCount)
-        .notes("editable: EXP, Filar, Death Value, Effect ID, STR/SPI/VIT/SPD core stat bytes")
+        .arrayEntries(arrayEntries)
+        .notes(
+            "editable: EXP, Filar, Soul Restore, Effect ID, STR/SPI/VIT/SPD, existing effects/resistances/drops")
         .build();
   }
 

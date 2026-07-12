@@ -84,7 +84,7 @@ public final class FxStatusesView extends BorderPane {
           @Override
           protected BuildResult call() throws Exception {
             return EditorPatchService.buildGameDataPatch(
-                state.workspace(), null, null, null, edits);
+                state.buildWorkspace(), null, null, null, edits);
           }
         };
     build.disableProperty().bind(task.runningProperty());
@@ -121,13 +121,14 @@ public final class FxStatusesView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            intColumn("ID", FxStatusViewModel::id, 60),
-            textColumn("Status", FxStatusViewModel::name, 180),
-            editableIntColumn("Duration", FxStatusViewModel::durationProperty, 90),
-            editableIntColumn("Expire Chance", FxStatusViewModel::expireChanceProperty, 110),
-            editableIntColumn("Icon", FxStatusViewModel::iconProperty, 70),
-            textColumn("Notes", FxStatusViewModel::notes, 260));
+        .setAll(
+            List.of(
+                intColumn("ID", FxStatusViewModel::id, 60),
+                textColumn("Status", FxStatusViewModel::name, 180),
+                editableIntColumn("Duration", FxStatusViewModel::durationProperty, 90),
+                editableIntColumn("Expire Chance", FxStatusViewModel::expireChanceProperty, 110),
+                editableIntColumn("Icon", FxStatusViewModel::iconProperty, 70),
+                textColumn("Notes", FxStatusViewModel::notes, 260)));
     return table;
   }
 }

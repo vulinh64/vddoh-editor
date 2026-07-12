@@ -16,6 +16,7 @@ public record EditorWorkspace(
     String gameDatEntryName,
     String itemDatEntryName,
     String resistanceOverflowState,
+    String equipmentBonusState,
     List<SkillLevelSnapshot> skillLevels,
     List<TalentSnapshot> talents,
     List<HeroSnapshot> heroes,

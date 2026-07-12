@@ -22,7 +22,7 @@ public final class GameDatHeroPatcher {
     HeroOffsets[] offsets = parseHeroOffsets(data);
     for (HeroPatch patch : patches) {
       if (patch.heroId() < 0 || patch.heroId() >= offsets.length) {
-        summary.skipped++;
+        summary.incrementSkipped();
         continue;
       }
       HeroOffsets o = offsets[patch.heroId()];
@@ -33,10 +33,10 @@ public final class GameDatHeroPatcher {
           patch.spirit().packed(),
           patch.vitality().packed(),
           patch.speed().packed());
-      summary.heroStats++;
+      summary.incrementHeroStats();
       writeHeroSeeds(
           data, o.seedOffset(), patch.levelCap(), patch.baseCritChance(), patch.baseCritDamage());
-      summary.heroSeeds++;
+      summary.incrementHeroSeeds();
     }
     log.info("Hero patch summary: {}", summary);
     return summary;

@@ -214,9 +214,9 @@ public final class GameDatSkillPatcher {
       byte[] data, SkillPatch patch, LevelOffsets offsets, PatchSummary summary) {
     if (offsets.costOffset() >= 0) {
       data[offsets.costOffset()] = checkedByte(patch.cost(), "cost");
-      summary.cost++;
+      summary.incrementCost();
     } else {
-      summary.skipped++;
+      summary.incrementSkipped();
     }
   }
 
@@ -240,7 +240,7 @@ public final class GameDatSkillPatcher {
       SkillEffectRow effect,
       PatchSummary summary) {
     if (offsets.damageOffset() < 0 || effect.index < 0 || effect.index >= offsets.damageCount()) {
-      summary.skipped++;
+      summary.incrementSkipped();
       return;
     }
     int offset =
@@ -248,7 +248,7 @@ public final class GameDatSkillPatcher {
             ? offsets.damageOffset() + effect.index * 3 + 1
             : offsets.damageOffset() + effect.index * 2;
     writeU16(data, offset, effect.value);
-    summary.damage++;
+    summary.incrementDamage();
   }
 
   private static void writeStatusEffect(
@@ -258,7 +258,7 @@ public final class GameDatSkillPatcher {
       SkillEffectRow effect,
       PatchSummary summary) {
     if (offsets.statusOffset() < 0 || effect.index < 0 || effect.index >= offsets.statusCount()) {
-      summary.skipped++;
+      summary.incrementSkipped();
       return;
     }
     int offset =
@@ -266,7 +266,7 @@ public final class GameDatSkillPatcher {
             ? offsets.statusOffset() + effect.index * 2 + 1
             : offsets.statusOffset() + effect.index;
     data[offset] = encodeSignedChance(effect.encodedValue());
-    summary.status++;
+    summary.incrementStatus();
   }
 
   @Builder

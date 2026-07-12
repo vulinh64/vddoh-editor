@@ -18,11 +18,13 @@ import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 public final class FxMonstersView extends BorderPane {
 
@@ -36,11 +38,26 @@ public final class FxMonstersView extends BorderPane {
     getStyleClass().add("monsters-view");
     TableView<FxMonsterViewModel> sticky = stickyTable();
     TableView<FxMonsterViewModel> table = table();
+    TableView<FxMonsterArrayEntryViewModel> details = detailTable();
     sticky.setItems(filtered);
     table.setItems(filtered);
+    table
+        .getSelectionModel()
+        .selectedItemProperty()
+        .addListener(
+            (_, _, monster) ->
+                details.setItems(
+                    monster == null
+                        ? FXCollections.observableArrayList()
+                        : monster.arrayEntryRows()));
     table.setEditable(true);
+    details.setEditable(true);
     setTop(filters());
-    setCenter(FxStickyTableSplit.horizontal(sticky, table, 0.16));
+    SplitPane main = FxStickyTableSplit.horizontal(sticky, table, 0.16);
+    VBox body = new VBox(8, main, details);
+    VBox.setVgrow(main, Priority.ALWAYS);
+    details.setPrefHeight(190);
+    setCenter(body);
     search.textProperty().addListener((_, _, _) -> refilter());
     state.workspaceProperty().addListener((_, _, workspace) -> load(workspace));
     state.monsterEditsSupplier(this::changedEdits);
@@ -87,7 +104,7 @@ public final class FxMonstersView extends BorderPane {
           @Override
           protected BuildResult call() throws Exception {
             return EditorPatchService.buildGameDataPatch(
-                state.workspace(), null, null, edits, null);
+                state.buildWorkspace(), null, null, edits, null);
           }
         };
     build.disableProperty().bind(task.runningProperty());
@@ -124,28 +141,29 @@ public final class FxMonstersView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            editableIntColumn("EXP", FxMonsterViewModel::experienceProperty, 70),
-            editableIntColumn("Filar", FxMonsterViewModel::filarProperty, 70),
-            editableIntColumn("Death", FxMonsterViewModel::deathValueProperty, 70),
-            editableIntColumn("Effect", FxMonsterViewModel::effectIdProperty, 70),
-            editableIntColumn("STR", FxMonsterViewModel::strengthProperty, 62),
-            editableIntColumn("SPI", FxMonsterViewModel::spiritProperty, 62),
-            editableIntColumn("VIT", FxMonsterViewModel::vitalityProperty, 62),
-            editableIntColumn("SPD", FxMonsterViewModel::speedProperty, 62),
-            intColumn("HP", FxMonsterViewModel::baseHp, 72),
-            intColumn("Res", FxMonsterViewModel::baseResource, 72),
-            intColumn("Attack", FxMonsterViewModel::baseAttack, 72),
-            intColumn("Defense", FxMonsterViewModel::baseDefense, 72),
-            intColumn("Move", FxMonsterViewModel::baseMove, 62),
-            intColumn("Hit", FxMonsterViewModel::hitChance, 62),
-            intColumn("Crit/Dmg", FxMonsterViewModel::critOrDamage, 76),
-            intColumn("Evade", FxMonsterViewModel::evadeOrGuard, 70),
-            intColumn("Chance", FxMonsterViewModel::packedChance, 72),
-            intColumn("Actions", FxMonsterViewModel::actionCount, 72),
-            intColumn("Effects", FxMonsterViewModel::effectCount, 72),
-            intColumn("Drops", FxMonsterViewModel::dropCount, 72),
-            textColumn("Notes", FxMonsterViewModel::notes, 240));
+        .setAll(
+            List.of(
+                editableIntColumn("EXP", FxMonsterViewModel::experienceProperty, 70),
+                editableIntColumn("Filar", FxMonsterViewModel::filarProperty, 70),
+                editableIntColumn("Soul Restore", FxMonsterViewModel::deathValueProperty, 110),
+                editableIntColumn("Effect", FxMonsterViewModel::effectIdProperty, 70),
+                editableIntColumn("STR", FxMonsterViewModel::strengthProperty, 62),
+                editableIntColumn("SPI", FxMonsterViewModel::spiritProperty, 62),
+                editableIntColumn("VIT", FxMonsterViewModel::vitalityProperty, 62),
+                editableIntColumn("SPD", FxMonsterViewModel::speedProperty, 62),
+                intColumn("HP", FxMonsterViewModel::baseHp, 72),
+                intColumn("Res", FxMonsterViewModel::baseResource, 72),
+                intColumn("Attack", FxMonsterViewModel::baseAttack, 72),
+                intColumn("Defense", FxMonsterViewModel::baseDefense, 72),
+                intColumn("Move", FxMonsterViewModel::baseMove, 62),
+                intColumn("Hit", FxMonsterViewModel::hitChance, 62),
+                intColumn("Crit/Dmg", FxMonsterViewModel::critOrDamage, 76),
+                intColumn("Evade", FxMonsterViewModel::evadeOrGuard, 70),
+                intColumn("Chance", FxMonsterViewModel::packedChance, 72),
+                intColumn("Actions", FxMonsterViewModel::actionCount, 72),
+                intColumn("Effects", FxMonsterViewModel::effectCount, 72),
+                intColumn("Drops", FxMonsterViewModel::dropCount, 72),
+                textColumn("Notes", FxMonsterViewModel::notes, 240)));
     return table;
   }
 
@@ -154,9 +172,27 @@ public final class FxMonstersView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            intColumn("ID", FxMonsterViewModel::id, 56),
-            textColumn("Monster", FxMonsterViewModel::name, 180));
+        .setAll(
+            List.of(
+                intColumn("ID", FxMonsterViewModel::id, 56),
+                textColumn("Monster", FxMonsterViewModel::name, 180)));
+    return table;
+  }
+
+  private static TableView<FxMonsterArrayEntryViewModel> detailTable() {
+    TableView<FxMonsterArrayEntryViewModel> table = new TableView<>();
+    table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+    table
+        .getColumns()
+        .setAll(
+            List.of(
+                textColumn("Side", FxMonsterArrayEntryViewModel::side, 140),
+                textColumn("Type", FxMonsterArrayEntryViewModel::type, 110),
+                intColumn("Index", FxMonsterArrayEntryViewModel::index, 62),
+                textColumn("Target", FxMonsterArrayEntryViewModel::target, 120),
+                editableIntColumn("Value", FxMonsterArrayEntryViewModel::valueProperty, 92),
+                textColumn("Editable", FxMonsterArrayEntryViewModel::editable, 78),
+                textColumn("Raw", FxMonsterArrayEntryViewModel::raw, 110)));
     return table;
   }
 }

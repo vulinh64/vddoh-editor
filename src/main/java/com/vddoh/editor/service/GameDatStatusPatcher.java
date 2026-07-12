@@ -22,27 +22,27 @@ public final class GameDatStatusPatcher {
     StatusOffsets[] offsets = parseStatusOffsets(data);
     for (StatusPatch patch : patches) {
       if (patch.statusId() < 0 || patch.statusId() >= offsets.length) {
-        summary.skipped++;
+        summary.incrementSkipped();
         continue;
       }
       StatusOffsets o = offsets[patch.statusId()];
       if (o.getDurationOffset() >= 0) {
         data[o.getDurationOffset()] = checkedByte(patch.duration(), "duration");
-        summary.duration++;
+        summary.incrementDuration();
       } else {
-        summary.skipped++;
+        summary.incrementSkipped();
       }
       if (o.getExpireOffset() >= 0) {
         data[o.getExpireOffset()] = encodeSignedChance(patch.expireChance());
-        summary.expire++;
+        summary.incrementExpire();
       } else {
-        summary.skipped++;
+        summary.incrementSkipped();
       }
       if (o.getIconOffset() >= 0) {
         data[o.getIconOffset()] = checkedByte(patch.icon(), "icon");
-        summary.icon++;
+        summary.incrementIcon();
       } else {
-        summary.skipped++;
+        summary.incrementSkipped();
       }
     }
     log.info("Status patch summary: {}", summary);

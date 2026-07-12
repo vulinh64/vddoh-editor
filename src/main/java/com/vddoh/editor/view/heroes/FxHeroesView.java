@@ -87,7 +87,7 @@ public final class FxHeroesView extends BorderPane {
           @Override
           protected BuildResult call() throws Exception {
             return EditorPatchService.buildGameDataPatch(
-                state.workspace(), null, edits, null, null);
+                state.buildWorkspace(), null, edits, null, null);
           }
         };
     build.disableProperty().bind(task.runningProperty());
@@ -121,34 +121,35 @@ public final class FxHeroesView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            editableIntColumn("Level Cap", FxHeroViewModel::levelCapProperty, 80),
-            editableIntColumn("STR Start", hero -> hero.strength().start(), 82),
-            editableIntColumn("STR Target", hero -> hero.strength().target(), 82),
-            editableIntColumn("STR Curve", hero -> hero.strength().shape(), 82),
-            editableIntColumn("SPI Start", hero -> hero.spirit().start(), 82),
-            editableIntColumn("SPI Target", hero -> hero.spirit().target(), 82),
-            editableIntColumn("SPI Curve", hero -> hero.spirit().shape(), 82),
-            editableIntColumn("VIT Start", hero -> hero.vitality().start(), 82),
-            editableIntColumn("VIT Target", hero -> hero.vitality().target(), 82),
-            editableIntColumn("VIT Curve", hero -> hero.vitality().shape(), 82),
-            editableIntColumn("SPD Start", hero -> hero.speed().start(), 82),
-            editableIntColumn("SPD Target", hero -> hero.speed().target(), 82),
-            editableIntColumn("SPD Curve", hero -> hero.speed().shape(), 82),
-            intColumn("STR @ Cap", FxHeroViewModel::strengthAtCap, 84),
-            intColumn("SPI @ Cap", FxHeroViewModel::spiritAtCap, 84),
-            intColumn("VIT @ Cap", FxHeroViewModel::vitalityAtCap, 84),
-            intColumn("SPD @ Cap", FxHeroViewModel::speedAtCap, 84),
-            intColumn("Base HP", FxHeroViewModel::baseHp, 76),
-            intColumn("Base Res", FxHeroViewModel::baseResource, 76),
-            intColumn("Attack", FxHeroViewModel::baseAttack, 76),
-            intColumn("Defense", FxHeroViewModel::baseDefense, 76),
-            intColumn("Move", FxHeroViewModel::baseMove, 62),
-            intColumn("Regen", FxHeroViewModel::baseRegen, 62),
-            editableIntColumn("Crit %", FxHeroViewModel::baseCritChanceProperty, 66),
-            editableIntColumn("Crit Dmg", FxHeroViewModel::baseCritDamageProperty, 76),
-            intColumn("Evasion", FxHeroViewModel::baseEvasion, 72),
-            textColumn("Notes", FxHeroViewModel::notes, 240));
+        .setAll(
+            List.of(
+                editableIntColumn("Level Cap", FxHeroViewModel::levelCapProperty, 80),
+                editableIntColumn("STR Start", hero -> hero.strength().start(), 82),
+                editableIntColumn("STR Target", hero -> hero.strength().target(), 82),
+                editableIntColumn("STR Curve", hero -> hero.strength().shape(), 82),
+                editableIntColumn("SPI Start", hero -> hero.spirit().start(), 82),
+                editableIntColumn("SPI Target", hero -> hero.spirit().target(), 82),
+                editableIntColumn("SPI Curve", hero -> hero.spirit().shape(), 82),
+                editableIntColumn("VIT Start", hero -> hero.vitality().start(), 82),
+                editableIntColumn("VIT Target", hero -> hero.vitality().target(), 82),
+                editableIntColumn("VIT Curve", hero -> hero.vitality().shape(), 82),
+                editableIntColumn("SPD Start", hero -> hero.speed().start(), 82),
+                editableIntColumn("SPD Target", hero -> hero.speed().target(), 82),
+                editableIntColumn("SPD Curve", hero -> hero.speed().shape(), 82),
+                intColumn("STR @ Cap", FxHeroViewModel::strengthAtCap, 84),
+                intColumn("SPI @ Cap", FxHeroViewModel::spiritAtCap, 84),
+                intColumn("VIT @ Cap", FxHeroViewModel::vitalityAtCap, 84),
+                intColumn("SPD @ Cap", FxHeroViewModel::speedAtCap, 84),
+                intColumn("Base HP", FxHeroViewModel::baseHp, 76),
+                intColumn("Base Res", FxHeroViewModel::baseResource, 76),
+                intColumn("Attack", FxHeroViewModel::baseAttack, 76),
+                intColumn("Defense", FxHeroViewModel::baseDefense, 76),
+                intColumn("Move", FxHeroViewModel::baseMove, 62),
+                intColumn("Regen", FxHeroViewModel::baseRegen, 62),
+                editableIntColumn("Crit %", FxHeroViewModel::baseCritChanceProperty, 66),
+                editableIntColumn("Crit Dmg", FxHeroViewModel::baseCritDamageProperty, 76),
+                intColumn("Evasion", FxHeroViewModel::baseEvasion, 72),
+                textColumn("Notes", FxHeroViewModel::notes, 240)));
     return table;
   }
 
@@ -157,9 +158,10 @@ public final class FxHeroesView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            intColumn("ID", FxHeroViewModel::id, 56),
-            textColumn("Hero", FxHeroViewModel::name, 150));
+        .setAll(
+            List.of(
+                intColumn("ID", FxHeroViewModel::id, 56),
+                textColumn("Hero", FxHeroViewModel::name, 150)));
     return table;
   }
 }

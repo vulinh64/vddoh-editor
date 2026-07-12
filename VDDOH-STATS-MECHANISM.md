@@ -295,7 +295,7 @@ This applies to damage-bearing skill elements:
 
 ```text
 Fire
-Frost / Ice
+Ice
 Light
 Shadow
 Blood
@@ -323,7 +323,7 @@ formula.
 This matters for editor wording:
 
 ```text
-Fire/Frost/Light/Shadow/Blood damage -> damage reduction / protection value
+Fire/Ice/Light/Shadow/Blood drain damage -> damage reduction / protection value
 Status effects                       -> chance/immunity-style status blocking
 ```
 
@@ -504,7 +504,189 @@ byte_p  skill level/variant passed to the selected skill
 
 The editor now displays category-5 consumable fields as consumable effects,
 places category-9 combat consumables in the Consumables item view, and displays
-their skill links as linked skill rows.
+their skill links as linked skill rows. The item view also shows a read-only
+preview of the linked skill's target shape/range and effects, because combat
+consumable tooltips are mostly skill tooltips.
+
+Confirmed example:
+
+```text
+Might Potion / Might potion
+  item category = 9
+  linked skill id = 33
+  stored level/variant = 1
+  reflected skill level = 0
+  target area = 1x1
+  range = 1
+  effect = Strong 100%
+```
+
+The in-game tooltip's `1` square and double-ended-arrow line is target/range
+metadata from the linked skill. It is not a direct `+1 Speed` consumable field.
+
+Confirmed category-5 consumable example:
+
+```text
+Vampire Stone / Vampire stone
+  short_g        -> HP effect 999
+  short_h        -> Resource effect 999
+  short_arr_b[0] -> cures Poison
+```
+
+In game, Vampire Stone fully restores Health, or at least applies `999` HP
+recovery, restores `999` resource regardless of whether the user uses Blood or
+Soul, and cures Poison. These values are edited in the JavaFX `Decoded Effects`
+table, not in a separate consumable panel.
+
+Equipment wording should be category-aware. For example, War Plate Mail decodes
+as:
+
+```text
+byte_d          -> Attack bonus 10
+int_arr_a[0]   -> Armor value 65
+short_arr_b[0] -> Anti-bleeding 30
+```
+
+Confirmed in game: War Plate Mail's `Armor value 65` adds flat `+65` Defense to
+the wielder. A level-50 Vince comparison showed:
+
+```text
+No armor:       Attack 351, Defense 195, Bleed resistance 0
+War Plate Mail: Attack 361, Defense 260, Bleed resistance 30
+```
+
+Therefore `byte_d = 10` is at least a displayed `Attack bonus +10`. Bytecode
+inspection of `g.b()V` shows this is not the same path as weapon damage:
+weapons add attack through `int_arr_a` entries whose high byte is `0`, while
+`byte_d` is copied into one of two scalar locals during equipment aggregation.
+Those locals are assigned, not accumulated.
+
+Follow-up equipment-stack test at Vince level 50:
+
+```text
+Sickle Blade only:
+  Attack 446, Defense 196
+
+Sickle Blade + War Plate Mail:
+  Attack 456, Defense 261, Bleed resistance 30
+
+Sickle Blade + War Plate Mail + Strong Helmet:
+  Attack 446, Defense 291, Bleed resistance 30
+
+Sickle Blade + War Plate Mail + Strong Helmet + Aaron's Shoes:
+  Attack 446, Defense 311, Sleep resistance 80, Bleed resistance 30
+```
+
+This is a real vanilla aggregation quirk, not an editor decoding issue. In
+`g.b()V`, normal packed stat slots `0..7` are accumulated with addition, but
+slot `8` / `byte_d` overwrites a single local as equipment slots are scanned.
+The displayed Attack formula then adds that one local:
+
+```text
+Attack = max(Strength * 5 - 9, 0) + overwritten non-weapon byte_d
+```
+
+For the weapon slot, `byte_d` feeds a different local that is added to displayed
+Defense. Actual weapon damage such as Sickle Blade's `+90` comes from
+weapon-side `int_arr_a` target `0`, so it still stacks normally.
+
+This explains the screenshots: War Plate Mail contributes `byte_d = 10`, so
+Attack rises by `10`; Strong Helmet later contributes `byte_d = 0` through the
+same overwrite path, so the War Plate attack bonus disappears while Defense and
+status resistance still stack normally.
+
+### Equipment Bonus Aggregation Patch Option
+
+The editor now has a separate `Patch equipment bonus overwrite` checkbox.
+
+Behavior:
+
+```text
+Input JAR already patched:
+  checkbox is checked and disabled
+
+Input JAR has the known vanilla g.b()V equipment byte_d overwrite shape:
+  checkbox is enabled and unchecked by default
+
+Input JAR has an unknown g.class layout:
+  checkbox is disabled
+```
+
+When enabled and checked during `Build Full Patched JAR`, the editor rewrites
+`g.class` so the four known `byte_d` assignment sites accumulate instead:
+
+```text
+bonus = item.byte_d   -> bonus += item.byte_d
+```
+
+This is implemented separately from the resistance-overflow patch. Unlike the
+resistance patch, this transform inserts bytecode and therefore uses JDK 25's
+Class-File API to rebuild `g.b()V` safely. The detector confirms the original
+shape before patching and confirms the patched shape afterward.
+
+The same inspection corrected the editor's armor subtype labels:
+
+```text
+category 2 subtype 0 -> Head
+category 2 subtype 1 -> Main Body Armor
+category 2 subtype 4 -> Boot
+```
+
+The editor shows these as display labels only; the raw packed fields and patch
+offsets remain unchanged.
+
+The editor can edit existing fixed-width decoded item effect rows in place:
+
+```text
+Packed stat high/low bytes
+Category-5 HP/resource/use-effect bytes
+short_arr_a / short_arr_b low value bytes
+```
+
+For `short_arr_a` and `short_arr_b`, the high byte identifies the stat/status
+target and is preserved. The editable value is the low byte only. The editor
+does not add/remove item effect rows yet, and it does not edit `int_arr_a/b`
+rows until those rows are split into separate target-id and value controls.
+
+Category `7` runes need rune-specific display rules. `int_arr_a` is the
+weapon-side effect and `int_arr_b` is the armor-side effect. For elemental runes
+the high byte maps to element ids such as Fire, Ice, Light, and Shadow; the
+same id on armor means the corresponding `Anti-*` value. Rune status chances use
+`short_arr_b` raw low-byte values scaled by `1/5` for display. For example,
+Shadow Rune III decodes as:
+
+```text
+Weapon: Shadow +12, Blind chance 4%
+Armor:  Anti-shadow 30, Anti-blind
+```
+
+Status Rune II decodes as:
+
+```text
+Weapon: Strength +1, Spirit +1, Vitality +1, Speed +1, Sleep chance 4%
+Armor:  Strength +1, Spirit +1, Vitality +1, Speed +1, Anti-sleep 20%
+```
+
+Blood Rune III decodes as:
+
+```text
+Weapon: Vitality +5, Regen +3, Bleeding chance 6%
+Armor:  Vitality +5, Regen +3, Anti-bleeding 30%
+```
+
+Rune of Nyr decodes as:
+
+```text
+Weapon: Fire damage +3, Spirit/INT +1, Max HP +5, Weak chance 2%
+Armor:  Anti-fire damage 8, Spirit/INT +1, Max HP +5, Anti-weak 30%
+```
+
+In the item detail UI, category-7 runes are split into `Common Effect`,
+`Weapon Effect`, and `Armor Effect` sections. The original game also separates
+rune effects into Weapon and Armor panels in the item screen. Shared packed
+stats are shown once under common effects; weapon-only damage/status chance and
+armor-only anti-element/status resistance rows stay in their respective
+sections.
 
 ## Confirmed Resistances From Screenshots
 
@@ -606,7 +788,7 @@ Input JAR has an unknown g.class layout:
   checkbox is disabled
 ```
 
-When enabled and checked during `Build Patched JAR`, the editor rewrites `g.class`
+When enabled and checked during `Build Full Patched JAR`, the editor rewrites `g.class`
 inside the output JAR. In JavaFX, this is part of the combined patch build, so
 class, `game.dat`, and `item.dat` changes are written together instead of through
 separate output passes. The current implementation is a hybrid patcher for hero
@@ -636,6 +818,16 @@ This means common overflows such as `100 + 100 -> byte -56` become `100` instead
 of `0`. The patch is intentionally narrow: it only applies when exactly one known
 vanilla byte pattern is found and Class-File API confirms the same resistance
 clamp shape, and it refuses unknown class layouts.
+
+Confirmed patched-game test:
+
+```text
+Romus with 130 Bleeding resistance displays as 100 in game.
+```
+
+The original Swing-built patched JAR confirmed the runtime behavior. JavaFX uses
+the same `EditorPatchService` and `ResistanceOverflowClassPatcher`, so the FX
+side is considered complete as long as it continues to call that shared path.
 
 Future improvement: a full Class-File API transform prototype worked and
 preserved the old J2ME class version `45.3`, but the hybrid detector plus raw
@@ -696,7 +888,7 @@ Current safe writable fields:
 ```text
 EXP         0..4095
 Filar       0..4095
-Death Value 0..127
+Soul Restore 0..127
 Effect ID   0..255
 STR-like    0..127
 SPI-like    0..127
@@ -704,7 +896,7 @@ VIT-like    0..127
 SPD-like    0..127
 ```
 
-`EXP`, `Filar`, and `Death Value` are the fixed packed scalar block immediately
+`EXP`, `Filar`, and `Soul Restore` are the fixed packed scalar block immediately
 after the monster name in `game.dat`. `EXP` and `Filar` are 12-bit values:
 
 ```text
@@ -712,7 +904,7 @@ byte0                  = EXP high 8 bits
 byte1 high nibble      = EXP low 4 bits
 byte1 low nibble       = Filar high 4 bits
 byte2                  = Filar low 8 bits
-byte3                  = Death Value
+byte3                  = Soul Restore
 ```
 
 Battle-result bytecode confirms the reward totals:
@@ -723,8 +915,16 @@ resultFilar      += monster.Filar
 ```
 
 In-game test: four `Junger Gabolg` units configured to `EXP=120`,
-`Filar=120`, and `Death Value=25` awarded `480 EXP` and `480 Filar`. This
-confirms `Death Value` is separate from battle-result reward totals.
+`Filar=120`, and `Soul Restore=25` awarded `480 EXP` and `480 Filar`. This
+confirms `Soul Restore` is separate from the displayed battle-result EXP/Filar
+totals.
+
+Confirmed gameplay meaning: `Soul Restore` is the amount of Soul restored to
+Romus and Manok when the enemy is slain. Their resource is Soul, and it can be
+replenished through enemy deaths. In-game testing confirmed the value increases
+Romus's Soul both in battle and after battle. It is not yet confirmed whether
+the same slain-enemy value is split or duplicated when Manok is also below full
+Soul.
 
 `Effect ID` is the last byte of the 13-byte monster tail and is reflected as
 monster field ordinal `16`. It is used by monster death-side effect handling,
@@ -783,9 +983,24 @@ This matches the Rescue Meryo snake's observed 48 HP. Earlier editor wording
 that displayed packed tail values such as `1356` as HP was misleading; those
 values are now shown only as packed diagnostics. The 13-byte tail is still
 packed enough that direct HP/combat writes should not be expanded until the bit
-layout is confirmed against bytecode and patched JAR tests. Drops and
-skills/effects are variable-length arrays and should likewise stay read-only
-until their record formats are mapped.
+layout is confirmed against bytecode and patched JAR tests.
+
+The editor now exposes existing fixed-width monster array entries in a detail
+table:
+
+```text
+Effects              three-byte packed entries
+Resistance/Status A  two-byte packed entries
+Resistance/Status B  two-byte packed entries
+Byte Array           one-byte packed entries
+Drops                two-byte packed entries
+```
+
+These entries are edited in place only. The editor intentionally does not
+add/remove entries yet because changing variable-length counts shifts every
+following packed offset in `game.dat`. The two short arrays are still labeled
+conservatively as `Resistance/Status A/B` until their exact gameplay semantics
+are confirmed against bytecode and in-game tests.
 
 ## Editor Notes
 

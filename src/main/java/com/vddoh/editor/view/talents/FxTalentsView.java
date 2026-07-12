@@ -87,7 +87,7 @@ public final class FxTalentsView extends BorderPane {
           @Override
           protected BuildResult call() throws Exception {
             return EditorPatchService.buildGameDataPatch(
-                state.workspace(), edits, null, null, null);
+                state.buildWorkspace(), edits, null, null, null);
           }
         };
     build.disableProperty().bind(task.runningProperty());
@@ -124,24 +124,25 @@ public final class FxTalentsView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            textColumn("Scope", FxTalentViewModel::scope, 75),
-            textColumn("Type", FxTalentViewModel::talentType, 145),
-            intColumn("Current", FxTalentViewModel::currentLevel, 78),
-            editableIntColumn("Max", FxTalentViewModel::maxLevelProperty, 62),
-            editableIntColumn("Amount", FxTalentViewModel::amountProperty, 72),
-            textColumn("Effect", FxTalentViewModel::effectName, 180),
-            editableIntColumn("Hero Effect", FxTalentViewModel::heroBonusProperty, 90),
-            editableIntColumn("Global ID", FxTalentViewModel::globalBonusProperty, 82),
-            editableIntColumn("Unlock Ref", FxTalentViewModel::skillUnlockProperty, 82),
-            editableIntColumn("Status ID", FxTalentViewModel::statusBonusProperty, 82),
-            editableIntColumn("Resist ID", FxTalentViewModel::resistanceBonusProperty, 82),
-            textColumn("Skill", FxTalentViewModel::unlockedSkillName, 160),
-            textColumn("L1", talent -> talent.levelValue(1), 58),
-            textColumn("L2", talent -> talent.levelValue(2), 58),
-            textColumn("L3", talent -> talent.levelValue(3), 58),
-            textColumn("L4", talent -> talent.levelValue(4), 58),
-            textColumn("Notes", FxTalentViewModel::notes, 260));
+        .setAll(
+            List.of(
+                textColumn("Scope", FxTalentViewModel::scope, 75),
+                textColumn("Type", FxTalentViewModel::talentType, 145),
+                intColumn("Current", FxTalentViewModel::currentLevel, 78),
+                editableIntColumn("Max", FxTalentViewModel::maxLevelProperty, 62),
+                editableIntColumn("Amount", FxTalentViewModel::amountProperty, 72),
+                textColumn("Effect", FxTalentViewModel::effectName, 180),
+                editableIntColumn("Hero Effect", FxTalentViewModel::heroBonusProperty, 90),
+                editableIntColumn("Global ID", FxTalentViewModel::globalBonusProperty, 82),
+                editableIntColumn("Unlock Ref", FxTalentViewModel::skillUnlockProperty, 82),
+                editableIntColumn("Status ID", FxTalentViewModel::statusBonusProperty, 82),
+                editableIntColumn("Resist ID", FxTalentViewModel::resistanceBonusProperty, 82),
+                textColumn("Skill", FxTalentViewModel::unlockedSkillName, 160),
+                textColumn("L1", talent -> talent.levelValue(1), 58),
+                textColumn("L2", talent -> talent.levelValue(2), 58),
+                textColumn("L3", talent -> talent.levelValue(3), 58),
+                textColumn("L4", talent -> talent.levelValue(4), 58),
+                textColumn("Notes", FxTalentViewModel::notes, 260)));
     return table;
   }
 
@@ -150,9 +151,10 @@ public final class FxTalentsView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            intColumn("ID", FxTalentViewModel::id, 56),
-            textColumn("Talent", FxTalentViewModel::name, 190));
+        .setAll(
+            List.of(
+                intColumn("ID", FxTalentViewModel::id, 56),
+                textColumn("Talent", FxTalentViewModel::name, 190)));
     return table;
   }
 }

@@ -105,6 +105,7 @@ public final class EditorSnapshots {
         .actionCount(row.actionCount())
         .effectCount(row.effectCount())
         .dropCount(row.dropCount())
+        .arrayEntries(row.arrayEntries())
         .notes(row.notes())
         .build();
   }
@@ -157,6 +158,9 @@ public final class EditorSnapshots {
   }
 
   private static ItemEffectSnapshot itemEffect(ItemEffectRow row) {
+    int numericValue = numericValue(row.value());
+    int max = itemEffectMax(row.raw());
+    boolean editable = max >= 0 && numericValue >= 0;
     return ItemEffectSnapshot.builder()
         .side(row.side())
         .type(row.type())
@@ -164,6 +168,33 @@ public final class EditorSnapshots {
         .value(row.value())
         .extra(row.extra())
         .raw(row.raw())
+        .editable(editable)
+        .numericValue(numericValue)
+        .max(Math.max(max, 0))
         .build();
+  }
+
+  private static int numericValue(String value) {
+    try {
+      return Integer.parseInt(value);
+    } catch (NumberFormatException _) {
+      return -1;
+    }
+  }
+
+  private static int itemEffectMax(String raw) {
+    if (raw == null) {
+      return -1;
+    }
+    if (raw.endsWith(":hi") || raw.endsWith(":lo") || raw.equals("byte_q")) {
+      return 0xff;
+    }
+    if (raw.equals("short_g") || raw.equals("short_h")) {
+      return 0xffff;
+    }
+    if (raw.startsWith("short_arr_a[") || raw.startsWith("short_arr_b[")) {
+      return 0xff;
+    }
+    return -1;
   }
 }

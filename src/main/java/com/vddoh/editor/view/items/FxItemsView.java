@@ -128,23 +128,26 @@ public final class FxItemsView extends BorderPane {
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
-        .addAll(
-            stringColumn("Slot", "slotLabel", 140),
-            stringColumn("Allowed", "allowedClasses", 115),
-            intColumn("Price", PRICE_PROPS, 80),
-            intColumn("Icon", "icon", 72),
-            intColumn("HP+", HP_BONUS_PROPS, 72),
-            intColumn("Res+", RESOURCE_BONUS_PROPS, 72),
-            stringColumn("Bonuses", "statBonusSummary", 210),
-            stringColumn("Decoded Effects", "effectSummary", 260),
-            stringColumn("Notes", "notes", 220));
+        .setAll(
+            List.of(
+                stringColumn("Slot", "slotLabel", 140),
+                stringColumn("Allowed", "allowedClasses", 115),
+                intColumn("Price", PRICE_PROPS, 80),
+                intColumn("Icon", "icon", 72),
+                intColumn("HP+", HP_BONUS_PROPS, 72),
+                intColumn("Res+", RESOURCE_BONUS_PROPS, 72),
+                stringColumn("Bonuses", "statBonusSummary", 210),
+                stringColumn("Decoded Effects", "effectSummary", 260),
+                stringColumn("Notes", "notes", 220)));
     return table;
   }
 
   private TableView<FxItemViewModel> stickyTable() {
     TableView<FxItemViewModel> table = new TableView<>(filtered);
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
-    table.getColumns().addAll(intColumn("ID", "id", 62), stringColumn("Item", "name", 190));
+    table
+        .getColumns()
+        .setAll(List.of(intColumn("ID", "id", 62), stringColumn("Item", "name", 190)));
     return table;
   }
 
@@ -158,7 +161,7 @@ public final class FxItemsView extends BorderPane {
         new Task<>() {
           @Override
           protected BuildResult call() throws Exception {
-            return EditorPatchService.buildItemPatch(state.workspace(), edits);
+            return EditorPatchService.buildItemPatch(state.buildWorkspace(), edits);
           }
         };
     build.disableProperty().bind(task.runningProperty());

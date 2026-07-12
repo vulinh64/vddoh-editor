@@ -23,6 +23,7 @@ import static com.vddoh.editor.utils.EditorSupport.slotLabel;
 import static com.vddoh.editor.utils.EditorSupport.statName;
 import static com.vddoh.editor.utils.EditorSupport.staticArray;
 import static com.vddoh.editor.utils.EditorSupport.staticByte2d;
+import static com.vddoh.editor.utils.EditorSupport.statusDisplayName;
 import static com.vddoh.editor.utils.EditorSupport.u8;
 
 import java.lang.reflect.Method;
@@ -35,6 +36,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class GameData {
+
+  static final String RAW_STR_DIGIT_FORMAT = "%s[%d]";
+
   public final List<SkillLevelRow> skillLevels = new ArrayList<>();
   public final List<TalentRow> talents = new ArrayList<>();
   public final List<HeroRow> heroes = new ArrayList<>();
@@ -74,7 +78,12 @@ public final class GameData {
         appendSkillRows(data.skillLevels, i, skills[i], statuses, damageGroups, decode);
       }
       appendItemRows(
-          data.items, staticArray(itemClass, itemClass, 0), statuses, skillNames, decode);
+          data.items,
+          staticArray(itemClass, itemClass, 0),
+          statuses,
+          skillNames,
+          data.skillLevels,
+          decode);
       appendStatusRows(data.statuses, statuses, decode);
       appendMonsterRows(data.monsters, staticArray(monsterClass, monsterClass, 0), decode);
       appendHeroRows(data.heroes, largerStaticArray(heroClass, heroClass), decode);
@@ -144,7 +153,12 @@ public final class GameData {
   }
 
   private static void appendItemRows(
-      List<ItemRow> rows, Object[] items, Object[] statuses, String[] skillNames, Method decode) {
+      List<ItemRow> rows,
+      Object[] items,
+      Object[] statuses,
+      String[] skillNames,
+      List<SkillLevelRow> skillRows,
+      Method decode) {
     String[] statusNames = decodedNames(statuses, decode);
     for (int i = 0; items != null && i < items.length; i++) {
       Object item = items[i];
@@ -162,6 +176,7 @@ public final class GameData {
       int weaponReach = category == 3 ? u8(raw(item, 18)) & 0x0f : 0;
       int weaponMode = category == 3 ? (u8(raw(item, 18)) >> 5) & 7 : 0;
       List<ItemEffectRow> effects = decodeItemEffects(item, category, statusNames, skillNames);
+      appendLinkedSkillPreview(effects, item, category, skillRows);
       rows.add(
           new ItemRow(
               i,
@@ -184,13 +199,61 @@ public final class GameData {
     }
   }
 
+  private static void appendLinkedSkillPreview(
+      List<ItemEffectRow> effects, Object item, int category, List<SkillLevelRow> skillRows) {
+    if (category != 9 && category != 10) {
+      return;
+    }
+    int skillId = u8(raw(item, 30));
+    int storedLevel = u8(raw(item, 31));
+    linkedSkillRow(skillRows, skillId, storedLevel)
+        .ifPresent(row -> appendLinkedSkillPreviewRows(effects, row));
+  }
+
+  private static java.util.Optional<SkillLevelRow> linkedSkillRow(
+      List<SkillLevelRow> skillRows, int skillId, int storedLevel) {
+    return skillRows.stream()
+        .filter(row -> row.skillId == skillId)
+        .filter(row -> row.levelIndex == storedLevel - 1)
+        .findFirst()
+        .or(
+            () ->
+                skillRows.stream()
+                    .filter(row -> row.skillId == skillId)
+                    .filter(row -> row.levelIndex == storedLevel)
+                    .findFirst());
+  }
+
+  private static void appendLinkedSkillPreviewRows(
+      List<ItemEffectRow> effects, SkillLevelRow skill) {
+    String side = "Linked skill preview";
+    effects.add(
+        ItemEffectRow.of(
+            side,
+            "Skill target",
+            "Area %dx%d, shape %d".formatted(skill.areaWidth, skill.areaHeight, skill.areaShape),
+            String.valueOf(skill.range),
+            skill.relativeAreaGrowth ? "range; relative area growth" : "range",
+            "linked_skill:area"));
+    for (SkillEffectRow effect : skill.effects) {
+      effects.add(
+          ItemEffectRow.of(
+              side,
+              "Skill " + effect.type,
+              effect.target,
+              String.valueOf(effect.displayValue()),
+              effect.isStatus() ? "% chance; " + effect.notes : effect.notes,
+              "linked_skill:effect[%d]".formatted(effect.index)));
+    }
+  }
+
   private static void appendStatusRows(List<StatusRow> rows, Object[] statuses, Method decode) {
     for (int i = 0; statuses != null && i < statuses.length; i++) {
       Object status = statuses[i];
       rows.add(
           new StatusRow(
               i,
-              decodeName(status, 0, decode),
+              statusDisplayName(decodeName(status, 0, decode)),
               u8(raw(status, 3)),
               signedChance(u8(raw(status, 5))),
               u8(raw(status, 14)),
@@ -204,6 +267,7 @@ public final class GameData {
       int[] actions = intArray(raw(monster, 18));
       int[] effects = intArray(raw(monster, 20));
       short[] drops = shortArray(raw(monster, 24));
+      List<MonsterArrayEntrySnapshot> arrayEntries = monsterArrayEntries(monster, effects, drops);
       rows.add(
           MonsterRow.of(
               i,
@@ -224,7 +288,70 @@ public final class GameData {
               shortValue(raw(monster, 34)),
               actions.length,
               effects.length,
-              drops.length));
+              drops.length,
+              arrayEntries));
+    }
+  }
+
+  private static List<MonsterArrayEntrySnapshot> monsterArrayEntries(
+      Object monster, int[] effects, short[] drops) {
+    List<MonsterArrayEntrySnapshot> rows = new ArrayList<>();
+    appendMonsterIntRows(rows, effects);
+    appendMonsterShortRows(rows, "Resistance/Status A", shortArray(raw(monster, 21)), "resistA");
+    appendMonsterShortRows(rows, "Resistance/Status B", shortArray(raw(monster, 22)), "resistB");
+    appendMonsterByteRows(rows, byteArray(raw(monster, 23)));
+    appendMonsterShortRows(rows, "Drops", drops, "drops");
+    return rows;
+  }
+
+  private static void appendMonsterIntRows(List<MonsterArrayEntrySnapshot> rows, int[] values) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      int packed = values[i] & 0x00ffffff;
+      rows.add(
+          MonsterArrayEntrySnapshot.builder()
+              .side("Effects")
+              .type("Effect")
+              .index(i)
+              .target("kind=%d".formatted((packed >>> 16) & 0xff))
+              .value(packed)
+              .editable(true)
+              .max(0x00ffffff)
+              .raw(RAW_STR_DIGIT_FORMAT.formatted("effects", i))
+              .build());
+    }
+  }
+
+  private static void appendMonsterShortRows(
+      List<MonsterArrayEntrySnapshot> rows, String side, short[] values, String rawPrefix) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      int packed = values[i] & 0xffff;
+      rows.add(
+          MonsterArrayEntrySnapshot.builder()
+              .side(side)
+              .type(rawPrefix.equals("drops") ? "Drop" : "Packed Short")
+              .index(i)
+              .target("id=%d".formatted((packed >>> 8) & 0xff))
+              .value(packed)
+              .editable(true)
+              .max(0xffff)
+              .raw(RAW_STR_DIGIT_FORMAT.formatted(rawPrefix, i))
+              .build());
+    }
+  }
+
+  private static void appendMonsterByteRows(List<MonsterArrayEntrySnapshot> rows, byte[] values) {
+    for (int i = 0; values != null && i < values.length; i++) {
+      rows.add(
+          MonsterArrayEntrySnapshot.builder()
+              .side("Byte Array")
+              .type("Byte")
+              .index(i)
+              .target("raw")
+              .value(values[i] & 0xff)
+              .editable(true)
+              .max(0xff)
+              .raw(RAW_STR_DIGIT_FORMAT.formatted("bytesD", i))
+              .build());
     }
   }
 
@@ -254,11 +381,13 @@ public final class GameData {
               (packedArea & 0x0f) + 1,
               packedShapeRange & 0x0f,
               (packedShapeRange & 0x80) != 0,
-              skillEffects(level, h, baseDamage, baseStatuses, statuses, damageGroups, decode)));
+              skillEffects(
+                  name, level, h, baseDamage, baseStatuses, statuses, damageGroups, decode)));
     }
   }
 
   private static List<SkillEffectRow> skillEffects(
+      String skillName,
       int level,
       Object skillLevel,
       int[] baseDamage,
@@ -268,7 +397,13 @@ public final class GameData {
       Method decode) {
     List<SkillEffectRow> effects = new ArrayList<>();
     appendDamageEffects(
-        effects, level, nullableShortArray(raw(skillLevel, 7)), baseDamage, damageGroups, decode);
+        effects,
+        skillName,
+        level,
+        nullableShortArray(raw(skillLevel, 7)),
+        baseDamage,
+        damageGroups,
+        decode);
     appendStatusEffects(
         effects, level, byteArray(raw(skillLevel, 8)), baseStatuses, statuses, decode);
     return effects;
@@ -276,6 +411,7 @@ public final class GameData {
 
   private static void appendDamageEffects(
       List<SkillEffectRow> effects,
+      String skillName,
       int level,
       short[] levelDamage,
       int[] baseDamage,
@@ -289,7 +425,7 @@ public final class GameData {
               "Damage",
               i,
               kind,
-              damageTargetName(kind, damageGroups, decode),
+              damageTargetName(kind, skillName, damageGroups, decode),
               value,
               level == 0 || levelDamage != null,
               inheritedNote(level, levelDamage == null, "value")));
@@ -319,13 +455,16 @@ public final class GameData {
     }
   }
 
-  private static String damageTargetName(int kind, byte[][] damageGroups, Method decode) {
-    return kind < damageGroups.length ? decodeBytes(damageGroups[kind], decode) : statName(kind);
+  private static String damageTargetName(
+      int kind, String skillName, byte[][] damageGroups, Method decode) {
+    return kind < damageGroups.length
+        ? DamageEffectKind.displayName(decodeBytes(damageGroups[kind], decode), skillName)
+        : statName(kind);
   }
 
   private static String statusTargetName(int statusId, Object[] statuses, Method decode) {
     return statusId < statuses.length
-        ? decodeName(statuses[statusId], 0, decode)
+        ? statusDisplayName(decodeName(statuses[statusId], 0, decode))
         : "Status " + statusId;
   }
 
