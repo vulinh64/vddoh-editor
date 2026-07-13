@@ -7,6 +7,8 @@ import com.vddoh.editor.view.skills.FxSkillsView;
 import com.vddoh.editor.view.statuses.FxStatusesView;
 import com.vddoh.editor.view.talents.FxTalentsView;
 import com.vddoh.editor.view.ui.FxCommandBar;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.Objects;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -14,17 +16,24 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 public final class FxEditorApplication extends Application {
 
   @Override
   public void start(Stage stage) {
+    Path initialInputJar = chooseInitialInputJar();
+    if (initialInputJar == null) {
+      System.exit(0);
+      return;
+    }
     FxEditorState state = new FxEditorState();
     FxNavigation navigation = new FxNavigation();
     BorderPane root = new BorderPane();
     root.getStyleClass().add("app-root");
-    root.setTop(new FxCommandBar(stage, state));
+    FxCommandBar commandBar = new FxCommandBar(stage, state);
+    root.setTop(commandBar);
     root.setCenter(sectionTabs(state, navigation));
     Label status = new Label();
     status.getStyleClass().add("status-bar");
@@ -40,6 +49,15 @@ public final class FxEditorApplication extends Application {
     stage.setTitle("VDDOH Data Editor");
     stage.setScene(scene);
     stage.show();
+    commandBar.loadInitialInputJar(initialInputJar);
+  }
+
+  private static Path chooseInitialInputJar() {
+    FileChooser chooser = new FileChooser();
+    chooser.setTitle("Choose VDDOH JAR");
+    chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JAR files", "*.jar"));
+    File chosen = chooser.showOpenDialog(null);
+    return chosen == null ? null : chosen.toPath();
   }
 
   private static TabPane sectionTabs(FxEditorState state, FxNavigation navigation) {

@@ -24,7 +24,8 @@ This project contains the current JavaFX data editor and reverse-engineering not
 
 ## Editor Features Implemented
 
-- [x] Choose input JAR at startup instead of assuming a fixed path.
+- [x] Choose input JAR at startup through a native file chooser before the main editor interface is shown. Canceling the initial chooser exits cleanly.
+- [x] Validate selected input JARs through `META-INF/MANIFEST.MF` before loading data. The editor requires `MIDlet-Name: Vampires Dawn: Deceit of Heretics` and `MIDlet-1: VampiresDawn,/s.png,VD`.
 - [x] Extract `game.dat` and `item.dat` to `%USERPROFILE%/.vddoh-editor/temp/<jar-name>/`.
 - [x] Default patched output goes to `%USERPROFILE%/.vddoh-editor/dist/` with a `-patched-0001.jar` style suffix; later builds use the next free suffix instead of overwriting an existing patched JAR.
 - [x] Editable Skills table with costs, damage values, and status chances where safe.

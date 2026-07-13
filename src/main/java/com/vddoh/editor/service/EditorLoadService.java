@@ -10,6 +10,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import lombok.AccessLevel;
@@ -23,9 +26,12 @@ public final class EditorLoadService {
   private static final String VDDOH_ROOT = "vddoh";
   private static final String GAME_DAT_PATH = "game.dat";
   private static final String ITEM_DAT_PATH = "item.dat";
+  private static final String EXPECTED_MIDLET_NAME = "Vampires Dawn: Deceit of Heretics";
+  private static final String EXPECTED_MIDLET_1 = "VampiresDawn,/s.png,VD";
 
   public static EditorWorkspace load(Path selectedJar) throws IOException {
     Path inputJar = selectedJar.toAbsolutePath().normalize();
+    validateVddohManifest(inputJar);
     String baseName = baseName(inputJar);
     Path workDir = editorUserPath("temp").resolve(baseName);
     Path gameDat = workDir.resolve(GAME_DAT_PATH);
@@ -82,6 +88,25 @@ public final class EditorLoadService {
     return baseName.toLowerCase().endsWith(".jar")
         ? baseName.substring(0, baseName.length() - 4)
         : baseName;
+  }
+
+  private static void validateVddohManifest(Path inputJar) throws IOException {
+    try (JarFile jar = new JarFile(inputJar.toFile())) {
+      Manifest manifest = jar.getManifest();
+      if (manifest == null) {
+        throw new IOException(
+            "Selected JAR is not Vampires Dawn: Deceit of Heretics: missing META-INF/MANIFEST.MF.");
+      }
+      Attributes attributes = manifest.getMainAttributes();
+      String midletName = attributes.getValue("MIDlet-Name");
+      String midlet1 = attributes.getValue("MIDlet-1");
+      if (!EXPECTED_MIDLET_NAME.equals(midletName) || !EXPECTED_MIDLET_1.equals(midlet1)) {
+        throw new IOException(
+            "Selected JAR is not Vampires Dawn: Deceit of Heretics: expected MIDlet-Name='%s' and MIDlet-1='%s'."
+                .formatted(EXPECTED_MIDLET_NAME, EXPECTED_MIDLET_1));
+      }
+      log.info("Validated VDDOH manifest for {}", inputJar);
+    }
   }
 
   private static ExtractedDataFiles extractDataFilesFromJar(

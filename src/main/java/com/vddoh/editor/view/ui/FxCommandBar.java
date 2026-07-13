@@ -26,11 +26,12 @@ public final class FxCommandBar extends HBox {
 
   private final Stage owner;
   private final FxEditorState state;
-  private final TextField inputJar = new TextField("jar/vddoh.jar");
+  private final TextField inputJar = new TextField();
   private final TextField outputJar = new TextField();
   private static final String DEFAULT_OUTPUT_FILE = "vddoh-edited.jar";
   private final CheckBox patchResistanceOverflow = new CheckBox("Patch resistance overflow");
   private final CheckBox patchEquipmentBonus = new CheckBox("Patch equipment bonus overwrite");
+  private final Button load = new Button("Load");
   private Path latestOutputJar;
 
   public FxCommandBar(Stage owner, FxEditorState state) {
@@ -39,13 +40,13 @@ public final class FxCommandBar extends HBox {
     getStyleClass().add("command-bar");
     setPadding(new Insets(8));
     setSpacing(8);
+    inputJar.setPromptText("Choose original VDDOH JAR...");
     outputJar.setEditable(false);
     outputJar.setOnMouseClicked(_ -> chooseOutputJar());
     outputJar.setFocusTraversable(false);
 
     Button browse = new Button("...");
     browse.setOnAction(_ -> chooseInputJar());
-    Button load = new Button("Load");
     load.setDefaultButton(true);
     load.setOnAction(_ -> loadSelectedJar(load));
     Button buildDataOnly = new Button("Build Data-Only JAR");
@@ -78,14 +79,23 @@ public final class FxCommandBar extends HBox {
             view);
   }
 
+  public void loadInitialInputJar(Path selectedJar) {
+    inputJar.setText(selectedJar.toString());
+    loadSelectedJar(load);
+  }
+
   private void chooseInputJar() {
-    FileChooser chooser = new FileChooser();
-    chooser.setTitle("Choose VDDOH JAR");
-    chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JAR files", "*.jar"));
-    File chosen = chooser.showOpenDialog(owner);
+    File chosen = chooseInputJarFile();
     if (chosen != null) {
       inputJar.setText(chosen.toPath().toString());
     }
+  }
+
+  private File chooseInputJarFile() {
+    FileChooser chooser = new FileChooser();
+    chooser.setTitle("Choose VDDOH JAR");
+    chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JAR files", "*.jar"));
+    return chooser.showOpenDialog(owner);
   }
 
   private void chooseOutputJar() {
@@ -113,7 +123,17 @@ public final class FxCommandBar extends HBox {
   }
 
   private void loadSelectedJar(Button load) {
-    Path selected = Path.of(inputJar.getText().trim());
+    String input = inputJar.getText().trim();
+    if (input.isEmpty()) {
+      File chosen = chooseInputJarFile();
+      if (chosen == null) {
+        state.status("Choose a VDDOH JAR to begin.");
+        return;
+      }
+      input = chosen.toPath().toString();
+      inputJar.setText(input);
+    }
+    Path selected = Path.of(input);
     Task<EditorWorkspace> task =
         new Task<>() {
           @Override
