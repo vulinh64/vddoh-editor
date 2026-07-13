@@ -87,7 +87,7 @@ public final class ResistanceOverflowClassPatcher {
         0x00
       };
 
-  static State state(byte[] data) {
+  public static State state(byte[] data) {
     int original = countPattern(data, ORIGINAL);
     int patched = countPattern(data, PATCHED);
     if (patched == 1 && original == 0) {

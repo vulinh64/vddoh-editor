@@ -19,7 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class EditorPatchService {
 
-  private static final String HERO_CLASS_ENTRY = "g.class";
+  public static final String HERO_CLASS_ENTRY = "g.class";
+
   public static final String GAME_DAT_FILE = "game.dat";
   private static final String ITEM_DAT_FILE = "item.dat";
 

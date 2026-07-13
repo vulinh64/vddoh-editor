@@ -1,5 +1,6 @@
 package com.vddoh.editor.service;
 
+import static com.vddoh.editor.service.EditorPatchService.HERO_CLASS_ENTRY;
 import static com.vddoh.editor.utils.EditorSupport.editorUserPath;
 import static com.vddoh.editor.utils.EditorSupport.readJarEntry;
 import static com.vddoh.editor.utils.EditorSupport.readZipEntry;
@@ -22,7 +23,6 @@ public final class EditorLoadService {
   private static final String VDDOH_ROOT = "vddoh";
   private static final String GAME_DAT_PATH = "game.dat";
   private static final String ITEM_DAT_PATH = "item.dat";
-  private static final String HERO_CLASS_ENTRY = "g.class";
 
   public static EditorWorkspace load(Path selectedJar) throws IOException {
     Path inputJar = selectedJar.toAbsolutePath().normalize();

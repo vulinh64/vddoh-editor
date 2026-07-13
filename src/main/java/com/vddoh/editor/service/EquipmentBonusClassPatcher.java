@@ -13,7 +13,9 @@ import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.StoreInstruction;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -37,7 +39,7 @@ public final class EquipmentBonusClassPatcher {
     UNKNOWN
   }
 
-  static State state(byte[] data) {
+  public static State state(byte[] data) {
     try {
       ClassModel model = ClassFile.of().parse(data);
       int original = originalSites(model);
@@ -58,7 +60,27 @@ public final class EquipmentBonusClassPatcher {
     }
   }
 
-  record Result(byte[] data, PatchSummary summary) {}
+  record Result(byte[] data, PatchSummary summary) {
+
+    @Override
+    public String toString() {
+      return "Result{data=%s, summary=%s}".formatted(Arrays.toString(data), summary);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      Result result = (Result) o;
+      return Objects.deepEquals(data, result.data) && Objects.equals(summary, result.summary);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(Arrays.hashCode(data), summary);
+    }
+  }
 
   static Result patch(byte[] data) {
     PatchSummary summary = new PatchSummary();
@@ -210,6 +232,26 @@ public final class EquipmentBonusClassPatcher {
   }
 
   private record PatchCounter(int[] value) {
+
+    @Override
+    public String toString() {
+      return "PatchCounter{value=%s}".formatted(Arrays.toString(value));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      PatchCounter that = (PatchCounter) o;
+      return Objects.deepEquals(value, that.value);
+    }
+
+    @Override
+    public int hashCode() {
+      return Arrays.hashCode(value);
+    }
+
     PatchCounter() {
       this(new int[1]);
     }

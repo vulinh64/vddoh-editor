@@ -102,7 +102,7 @@ Bytecode tooling direction:
 - [x] Expand Monster editing beyond v1: decode/write existing fixed-width resistance/status/drop array entries. Adding/removing variable-length entries and AI/action entries remain future work.
 - [x] Expand Item editing beyond only top-level safe fields into existing fixed-width decoded effect rows. Adding/removing item effect rows remains future work.
 - [ ] Add explicit patch validation reports before writing output JAR.
-- [ ] Add unit tests or small command-line verifier for patchers.
+- [x] Add unit tests or small command-line verifier for patchers. JUnit 5 now covers vanilla fixture baselines, class patch combinations/idempotency/refusal, output suffix behavior, Vince STR/HP preview editing, and confirmed item decode truth cases.
 - [ ] Update docs when new field mappings become confirmed.
 - [ ] Continue the record/Lombok refactor carefully: immutable editable rows should use `@With`; mutable parser accumulators may stay mutable until a clean builder/with flow is obvious.
 
