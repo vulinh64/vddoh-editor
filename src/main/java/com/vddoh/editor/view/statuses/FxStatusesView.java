@@ -5,10 +5,14 @@ import static com.vddoh.editor.view.ui.FxTableColumns.intColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.textColumn;
 
 import com.vddoh.editor.data.BuildResult;
+import com.vddoh.editor.data.ChangeColumnName;
+import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.ui.FxDialogs;
+import com.vddoh.editor.view.ui.FxTableColumns.ChangeLogContext;
+import com.vddoh.editor.view.ui.FxTableColumns.IntegerEditBounds;
 import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -116,7 +120,7 @@ public final class FxStatusesView extends BorderPane {
         .toList();
   }
 
-  private static TableView<FxStatusViewModel> table() {
+  private TableView<FxStatusViewModel> table() {
     TableView<FxStatusViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
@@ -125,10 +129,33 @@ public final class FxStatusesView extends BorderPane {
             List.of(
                 intColumn("ID", FxStatusViewModel::id, 60),
                 textColumn("Status", FxStatusViewModel::name, 180),
-                editableIntColumn("Duration", FxStatusViewModel::durationProperty, 90),
-                editableIntColumn("Expire Chance", FxStatusViewModel::expireChanceProperty, 110),
-                editableIntColumn("Icon", FxStatusViewModel::iconProperty, 70),
+                editableIntColumn(
+                    "Duration",
+                    ChangeColumnName.DURATION,
+                    FxStatusViewModel::durationProperty,
+                    120,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "Duration")),
+                editableIntColumn(
+                    "Expire Chance",
+                    ChangeColumnName.EXPIRE_CHANCE,
+                    FxStatusViewModel::expireChanceProperty,
+                    150,
+                    changeLogContext(),
+                    IntegerEditBounds.of(-127, 127, "Expire Chance")),
+                editableIntColumn(
+                    "Icon",
+                    ChangeColumnName.ICON,
+                    FxStatusViewModel::iconProperty,
+                    100,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "Icon")),
                 textColumn("Notes", FxStatusViewModel::notes, 260)));
     return table;
+  }
+
+  private ChangeLogContext<FxStatusViewModel> changeLogContext() {
+    return new ChangeLogContext<>(
+        state, EditorTabName.STATUSES, FxStatusViewModel::id, FxStatusViewModel::name);
   }
 }

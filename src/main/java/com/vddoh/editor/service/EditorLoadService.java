@@ -4,6 +4,7 @@ import static com.vddoh.editor.service.EditorPatchService.HERO_CLASS_ENTRY;
 import static com.vddoh.editor.utils.EditorSupport.editorUserPath;
 import static com.vddoh.editor.utils.EditorSupport.readJarEntry;
 import static com.vddoh.editor.utils.EditorSupport.readZipEntry;
+import static com.vddoh.editor.utils.EditorSupport.u8;
 
 import com.vddoh.editor.data.*;
 import java.io.IOException;
@@ -51,7 +52,10 @@ public final class EditorLoadService {
     List<TalentSnapshot> talents = data.talents.stream().map(EditorSnapshots::talent).toList();
     List<HeroSnapshot> heroes = data.heroes.stream().map(EditorSnapshots::hero).toList();
     List<ItemSnapshot> items = data.items.stream().map(EditorSnapshots::item).toList();
-    List<MonsterSnapshot> monsters = data.monsters.stream().map(EditorSnapshots::monster).toList();
+    List<MonsterSnapshot> monsters =
+        applyRawMonsterHeaders(
+            data.monsters.stream().map(EditorSnapshots::monster).toList(),
+            Files.readAllBytes(gameDat));
     List<StatusSnapshot> statuses = data.statuses.stream().map(EditorSnapshots::status).toList();
     log.info(
         "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}",
@@ -80,6 +84,26 @@ public final class EditorLoadService {
         .monsters(monsters)
         .statuses(statuses)
         .build();
+  }
+
+  private static List<MonsterSnapshot> applyRawMonsterHeaders(
+      List<MonsterSnapshot> monsters, byte[] gameData) {
+    MonsterOffsets[] offsets = GameDatMonsterPatcher.parseMonsterOffsets(gameData);
+    return monsters.stream()
+        .map(monster -> applyRawMonsterHeader(monster, offsets, gameData))
+        .toList();
+  }
+
+  private static MonsterSnapshot applyRawMonsterHeader(
+      MonsterSnapshot monster, MonsterOffsets[] offsets, byte[] gameData) {
+    if (monster.id() < 0 || monster.id() >= offsets.length) {
+      return monster;
+    }
+    int offset = offsets[monster.id()].fixedOffset();
+    int experience = (u8(gameData[offset]) << 4) | (u8(gameData[offset + 1]) >>> 4);
+    int filar = ((u8(gameData[offset + 1]) & 0x0f) << 8) | u8(gameData[offset + 2]);
+    int soulRestore = u8(gameData[offset + 3]);
+    return monster.withExperience(experience).withFilar(filar).withDeathValue(soulRestore);
   }
 
   private static String baseName(Path inputJar) {

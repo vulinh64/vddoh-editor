@@ -63,16 +63,32 @@ public record FxTalentViewModel(
     return globalBonus;
   }
 
+  public boolean globalBonusEditable() {
+    return talent.globalBonusEditable();
+  }
+
   public IntegerProperty skillUnlockProperty() {
     return skillUnlock;
+  }
+
+  public boolean skillUnlockEditable() {
+    return talent.skillUnlockEditable();
   }
 
   public IntegerProperty statusBonusProperty() {
     return statusBonus;
   }
 
+  public boolean statusBonusEditable() {
+    return talent.statusBonusEditable();
+  }
+
   public IntegerProperty resistanceBonusProperty() {
     return resistanceBonus;
+  }
+
+  public boolean resistanceBonusEditable() {
+    return talent.resistanceBonusEditable();
   }
 
   public String effectName() {
@@ -125,13 +141,15 @@ public record FxTalentViewModel(
     return TalentEdit.builder()
         .group(talent.group())
         .talentId(id())
-        .maxLevel(checked(maxLevel.get(), 15, "Max Level"))
-        .amount(checked(amount.get(), 255, "Amount"))
-        .globalBonus(checked(globalBonus.get(), 255, "Global Bonus"))
-        .skillUnlock(checked(skillUnlock.get(), 255, "Skill Unlock"))
-        .statusBonus(checked(statusBonus.get(), 255, "Status Bonus"))
-        .resistanceBonus(checked(resistanceBonus.get(), 255, "Resistance Bonus"))
-        .heroBonus(checked(heroBonus.get(), 255, "Hero Bonus"))
+        .maxLevel(checked(maxLevel.get()))
+        .amount(checked(amount.get(), "Amount"))
+        .globalBonus(checkedOptionalLink(globalBonus.get(), globalBonusEditable(), "Global Bonus"))
+        .skillUnlock(checkedOptionalLink(skillUnlock.get(), skillUnlockEditable(), "Skill Unlock"))
+        .statusBonus(checkedOptionalLink(statusBonus.get(), statusBonusEditable(), "Status Bonus"))
+        .resistanceBonus(
+            checkedOptionalLink(
+                resistanceBonus.get(), resistanceBonusEditable(), "Resistance Bonus"))
+        .heroBonus(checked(heroBonus.get(), "Hero Bonus"))
         .build();
   }
 
@@ -143,9 +161,26 @@ public record FxTalentViewModel(
             .contains(normalized);
   }
 
-  private static int checked(int value, int max, String label) {
-    if (value < 0 || value > max) {
-      throw new IllegalArgumentException("%s must be %d..%d".formatted(label, 0, max));
+  private static int checked(int value, String label) {
+    if (value < 0 || value > 15) {
+      throw new IllegalArgumentException("%s must be %d..%d".formatted(label, 0, 15));
+    }
+    return value;
+  }
+
+  private static int checked(int value) {
+    if (value < 1 || value > 4) {
+      throw new IllegalArgumentException("%s must be %d..%d".formatted("Max Level", 1, 4));
+    }
+    return value;
+  }
+
+  private static int checkedOptionalLink(int value, boolean editable, String label) {
+    if (!editable) {
+      return 0;
+    }
+    if (value < 1 || value > 256) {
+      throw new IllegalArgumentException("%s must be %d..%d".formatted(label, 1, 256));
     }
     return value;
   }

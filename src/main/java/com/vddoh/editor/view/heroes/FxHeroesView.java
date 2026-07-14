@@ -5,11 +5,15 @@ import static com.vddoh.editor.view.ui.FxTableColumns.intColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.textColumn;
 
 import com.vddoh.editor.data.BuildResult;
+import com.vddoh.editor.data.ChangeColumnName;
+import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.ui.FxDialogs;
 import com.vddoh.editor.view.ui.FxStickyTableSplit;
+import com.vddoh.editor.view.ui.FxTableColumns.ChangeLogContext;
+import com.vddoh.editor.view.ui.FxTableColumns.IntegerEditBounds;
 import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -116,26 +120,104 @@ public final class FxHeroesView extends BorderPane {
     return heroes.stream().filter(FxHeroViewModel::changed).map(FxHeroViewModel::toEdit).toList();
   }
 
-  private static TableView<FxHeroViewModel> table() {
+  private TableView<FxHeroViewModel> table() {
     TableView<FxHeroViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
         .setAll(
             List.of(
-                editableIntColumn("Level Cap", FxHeroViewModel::levelCapProperty, 80),
-                editableIntColumn("STR Start", hero -> hero.strength().start(), 82),
-                editableIntColumn("STR Target", hero -> hero.strength().target(), 82),
-                editableIntColumn("STR Curve", hero -> hero.strength().shape(), 82),
-                editableIntColumn("SPI Start", hero -> hero.spirit().start(), 82),
-                editableIntColumn("SPI Target", hero -> hero.spirit().target(), 82),
-                editableIntColumn("SPI Curve", hero -> hero.spirit().shape(), 82),
-                editableIntColumn("VIT Start", hero -> hero.vitality().start(), 82),
-                editableIntColumn("VIT Target", hero -> hero.vitality().target(), 82),
-                editableIntColumn("VIT Curve", hero -> hero.vitality().shape(), 82),
-                editableIntColumn("SPD Start", hero -> hero.speed().start(), 82),
-                editableIntColumn("SPD Target", hero -> hero.speed().target(), 82),
-                editableIntColumn("SPD Curve", hero -> hero.speed().shape(), 82),
+                editableIntColumn(
+                    "Level Cap",
+                    ChangeColumnName.LEVEL_CAP,
+                    FxHeroViewModel::levelCapProperty,
+                    110,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "Level Cap")),
+                editableIntColumn(
+                    "STR Start",
+                    ChangeColumnName.STR_START,
+                    hero -> hero.strength().start(),
+                    110,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "STR Start")),
+                editableIntColumn(
+                    "STR Target",
+                    ChangeColumnName.STR_TARGET,
+                    hero -> hero.strength().target(),
+                    116,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "STR Target")),
+                editableIntColumn(
+                    "STR Curve",
+                    ChangeColumnName.STR_CURVE,
+                    hero -> hero.strength().shape(),
+                    112,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "STR Curve")),
+                editableIntColumn(
+                    "SPI Start",
+                    ChangeColumnName.SPI_START,
+                    hero -> hero.spirit().start(),
+                    110,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "SPI Start")),
+                editableIntColumn(
+                    "SPI Target",
+                    ChangeColumnName.SPI_TARGET,
+                    hero -> hero.spirit().target(),
+                    116,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "SPI Target")),
+                editableIntColumn(
+                    "SPI Curve",
+                    ChangeColumnName.SPI_CURVE,
+                    hero -> hero.spirit().shape(),
+                    112,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "SPI Curve")),
+                editableIntColumn(
+                    "VIT Start",
+                    ChangeColumnName.VIT_START,
+                    hero -> hero.vitality().start(),
+                    110,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "VIT Start")),
+                editableIntColumn(
+                    "VIT Target",
+                    ChangeColumnName.VIT_TARGET,
+                    hero -> hero.vitality().target(),
+                    116,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "VIT Target")),
+                editableIntColumn(
+                    "VIT Curve",
+                    ChangeColumnName.VIT_CURVE,
+                    hero -> hero.vitality().shape(),
+                    112,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "VIT Curve")),
+                editableIntColumn(
+                    "SPD Start",
+                    ChangeColumnName.SPD_START,
+                    hero -> hero.speed().start(),
+                    110,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "SPD Start")),
+                editableIntColumn(
+                    "SPD Target",
+                    ChangeColumnName.SPD_TARGET,
+                    hero -> hero.speed().target(),
+                    116,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 127, "SPD Target")),
+                editableIntColumn(
+                    "SPD Curve",
+                    ChangeColumnName.SPD_CURVE,
+                    hero -> hero.speed().shape(),
+                    112,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "SPD Curve")),
                 intColumn("STR @ Cap", FxHeroViewModel::strengthAtCap, 84),
                 intColumn("SPI @ Cap", FxHeroViewModel::spiritAtCap, 84),
                 intColumn("VIT @ Cap", FxHeroViewModel::vitalityAtCap, 84),
@@ -146,8 +228,20 @@ public final class FxHeroesView extends BorderPane {
                 intColumn("Defense", FxHeroViewModel::baseDefense, 76),
                 intColumn("Move", FxHeroViewModel::baseMove, 62),
                 intColumn("Regen", FxHeroViewModel::baseRegen, 62),
-                editableIntColumn("Crit %", FxHeroViewModel::baseCritChanceProperty, 66),
-                editableIntColumn("Crit Dmg", FxHeroViewModel::baseCritDamageProperty, 76),
+                editableIntColumn(
+                    "Crit %",
+                    ChangeColumnName.CRIT_CHANCE,
+                    FxHeroViewModel::baseCritChanceProperty,
+                    100,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "Crit %")),
+                editableIntColumn(
+                    "Crit Dmg",
+                    ChangeColumnName.CRIT_DAMAGE,
+                    FxHeroViewModel::baseCritDamageProperty,
+                    110,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 255, "Crit Dmg")),
                 intColumn("Evasion", FxHeroViewModel::baseEvasion, 72),
                 textColumn("Notes", FxHeroViewModel::notes, 240)));
     return table;
@@ -163,5 +257,10 @@ public final class FxHeroesView extends BorderPane {
                 intColumn("ID", FxHeroViewModel::id, 56),
                 textColumn("Hero", FxHeroViewModel::name, 150)));
     return table;
+  }
+
+  private ChangeLogContext<FxHeroViewModel> changeLogContext() {
+    return new ChangeLogContext<>(
+        state, EditorTabName.HEROES, FxHeroViewModel::id, FxHeroViewModel::name);
   }
 }

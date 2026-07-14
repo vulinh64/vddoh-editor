@@ -5,11 +5,15 @@ import static com.vddoh.editor.view.ui.FxTableColumns.intColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.textColumn;
 
 import com.vddoh.editor.data.BuildResult;
+import com.vddoh.editor.data.ChangeColumnName;
+import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.ui.FxDialogs;
 import com.vddoh.editor.view.ui.FxStickyTableSplit;
+import com.vddoh.editor.view.ui.FxTableColumns.ChangeLogContext;
+import com.vddoh.editor.view.ui.FxTableColumns.IntegerEditBounds;
 import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -119,7 +123,7 @@ public final class FxTalentsView extends BorderPane {
         .toList();
   }
 
-  private static TableView<FxTalentViewModel> table() {
+  private TableView<FxTalentViewModel> table() {
     TableView<FxTalentViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
@@ -129,14 +133,60 @@ public final class FxTalentsView extends BorderPane {
                 textColumn("Scope", FxTalentViewModel::scope, 75),
                 textColumn("Type", FxTalentViewModel::talentType, 145),
                 intColumn("Current", FxTalentViewModel::currentLevel, 78),
-                editableIntColumn("Max", FxTalentViewModel::maxLevelProperty, 62),
-                editableIntColumn("Amount", FxTalentViewModel::amountProperty, 72),
+                editableIntColumn(
+                    "Max",
+                    ChangeColumnName.MAX,
+                    FxTalentViewModel::maxLevelProperty,
+                    62,
+                    changeLogContext(),
+                    IntegerEditBounds.of(1, 4, "Max Level")),
+                editableIntColumn(
+                    "Amount",
+                    ChangeColumnName.AMOUNT,
+                    FxTalentViewModel::amountProperty,
+                    72,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 15, "Amount")),
                 textColumn("Effect", FxTalentViewModel::effectName, 180),
-                editableIntColumn("Hero Effect", FxTalentViewModel::heroBonusProperty, 90),
-                editableIntColumn("Global ID", FxTalentViewModel::globalBonusProperty, 82),
-                editableIntColumn("Unlock Ref", FxTalentViewModel::skillUnlockProperty, 82),
-                editableIntColumn("Status ID", FxTalentViewModel::statusBonusProperty, 82),
-                editableIntColumn("Resist ID", FxTalentViewModel::resistanceBonusProperty, 82),
+                editableIntColumn(
+                    "Hero Effect",
+                    ChangeColumnName.HERO_EFFECT,
+                    FxTalentViewModel::heroBonusProperty,
+                    90,
+                    changeLogContext(),
+                    IntegerEditBounds.of(0, 15, "Hero Effect")),
+                editableIntColumn(
+                    "Global ID",
+                    ChangeColumnName.GLOBAL_ID,
+                    FxTalentViewModel::globalBonusProperty,
+                    82,
+                    changeLogContext(),
+                    FxTalentViewModel::globalBonusEditable,
+                    IntegerEditBounds.of(1, 256, "Global ID")),
+                editableIntColumn(
+                    "Unlock Ref",
+                    ChangeColumnName.UNLOCK_REF,
+                    FxTalentViewModel::skillUnlockProperty,
+                    82,
+                    changeLogContext(),
+                    FxTalentViewModel::skillUnlockEditable,
+                    IntegerEditBounds.of(1, 256, "Unlock Ref")),
+                editableIntColumn(
+                    "Status ID",
+                    ChangeColumnName.STATUS_ID,
+                    FxTalentViewModel::statusBonusProperty,
+                    82,
+                    changeLogContext(),
+                    FxTalentViewModel::statusBonusEditable,
+                    IntegerEditBounds.of(1, 256, "Status ID")),
+                editableIntColumn(
+                    "Resist ID",
+                    ChangeColumnName.RESIST_ID,
+                    FxTalentViewModel::resistanceBonusProperty,
+                    82,
+                    changeLogContext(),
+                    FxTalentViewModel::resistanceBonusEditable,
+                    IntegerEditBounds.of(1, 256, "Resist ID")),
                 textColumn("Skill", FxTalentViewModel::unlockedSkillName, 160),
                 textColumn("L1", talent -> talent.levelValue(1), 58),
                 textColumn("L2", talent -> talent.levelValue(2), 58),
@@ -156,5 +206,10 @@ public final class FxTalentsView extends BorderPane {
                 intColumn("ID", FxTalentViewModel::id, 56),
                 textColumn("Talent", FxTalentViewModel::name, 190)));
     return table;
+  }
+
+  private ChangeLogContext<FxTalentViewModel> changeLogContext() {
+    return new ChangeLogContext<>(
+        state, EditorTabName.TALENTS, FxTalentViewModel::id, FxTalentViewModel::name);
   }
 }

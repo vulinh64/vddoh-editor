@@ -35,6 +35,10 @@ public record FxMonsterArrayEntryViewModel(MonsterArrayEntrySnapshot entry, Inte
     return entry.editable() ? "Yes" : "No";
   }
 
+  public String range() {
+    return entry.editable() ? "0.." + entry.max() : "";
+  }
+
   public String raw() {
     return entry.raw();
   }

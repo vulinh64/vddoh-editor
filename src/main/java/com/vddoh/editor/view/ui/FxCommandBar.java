@@ -47,7 +47,6 @@ public final class FxCommandBar extends HBox {
 
     Button browse = new Button("...");
     browse.setOnAction(_ -> chooseInputJar());
-    load.setDefaultButton(true);
     load.setOnAction(_ -> loadSelectedJar(load));
     Button buildDataOnly = new Button("Build Data-Only JAR");
     buildDataOnly.setOnAction(_ -> buildDataOnlyJar(buildDataOnly));
@@ -55,6 +54,8 @@ public final class FxCommandBar extends HBox {
     build.setOnAction(_ -> buildPatchedJar(build));
     Button view = new Button("View");
     view.setOnAction(_ -> viewOutputJar());
+    Button changeLog = new Button("Change Log");
+    changeLog.setOnAction(_ -> FxChangeLogDialog.show(owner, state));
     patchResistanceOverflow
         .selectedProperty()
         .bindBidirectional(state.patchResistanceOverflowProperty());
@@ -76,7 +77,8 @@ public final class FxCommandBar extends HBox {
             patchEquipmentBonus,
             buildDataOnly,
             build,
-            view);
+            view,
+            changeLog);
   }
 
   public void loadInitialInputJar(Path selectedJar) {
@@ -147,6 +149,7 @@ public final class FxCommandBar extends HBox {
         _ -> {
           EditorWorkspace workspace = task.getValue();
           state.workspace(workspace);
+          state.clearChangeLog();
           setLatestOutputJar(workspace.outputJar());
           updateResistanceOverflowControl(workspace);
           updateEquipmentBonusControl(workspace);

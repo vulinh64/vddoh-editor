@@ -907,6 +907,12 @@ byte2                  = Filar low 8 bits
 byte3                  = Soul Restore
 ```
 
+The editor reloads these three values from the raw `game.dat` bytes instead of
+trusting reflected monster fields, because the reflected runtime values can
+carry signed/unsigned artifacts after patching. Regression coverage confirms a
+patched monster with `EXP=1200`, `Filar=1000`, and `Soul Restore=25` reloads
+with those exact values.
+
 Battle-result bytecode confirms the reward totals:
 
 ```text

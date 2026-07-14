@@ -115,6 +115,7 @@ In `src/main/java/com/vddoh/editor/`:
 | `view/FxEditorApplication.java` | JavaFX UI coordinator and main tab layout. |
 | `view/**` | JavaFX views and view-models. |
 | `data/**` | DTOs, rows, snapshots, patch requests, summaries, and read models. |
+| `service/EditorLoadService.java` | Loads selected JAR workspaces and applies raw `game.dat` monster reward headers so EXP/Filar/Soul Restore reload with packed 12-bit values instead of reflected signed artifacts. |
 | `service/EditorPatchService.java` | Patch build service. `buildFullPatch(PatchBuildRequest)` writes game.dat, item.dat, and optional `g.class` replacements in one cumulative JAR operation. |
 | `service/GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
 | `service/GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |

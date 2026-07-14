@@ -11,8 +11,12 @@ import com.vddoh.editor.data.BuildResult;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.data.HeroEdit;
 import com.vddoh.editor.data.HeroSnapshot;
+import com.vddoh.editor.data.ItemEdit;
+import com.vddoh.editor.data.ItemEffectEdit;
 import com.vddoh.editor.data.ItemEffectSnapshot;
 import com.vddoh.editor.data.ItemSnapshot;
+import com.vddoh.editor.data.MonsterEdit;
+import com.vddoh.editor.data.MonsterSnapshot;
 import com.vddoh.editor.data.PatchBuildRequest;
 import com.vddoh.editor.data.StatCurveEdit;
 import com.vddoh.editor.data.StatCurveSnapshot;
@@ -263,6 +267,38 @@ class EditorPatchServiceTest {
   }
 
   @Test
+  void itemPatchWritesConsumableRestoreEffectsWithoutOffsetDrift() throws Exception {
+    EditorWorkspace workspace = workspace("vampire-stone-item-edit.jar");
+    ItemSnapshot vampireStone = item(workspace, "Vampire stone");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .itemEdits(
+                    List.of(
+                        ItemEdit.builder()
+                            .itemId(vampireStone.id())
+                            .price(vampireStone.price())
+                            .icon(vampireStone.icon())
+                            .hpRestore(777)
+                            .resourceRestore(888)
+                            .effectEdits(
+                                List.of(
+                                    ItemEffectEdit.builder().raw("short_g").value(777).build(),
+                                    ItemEffectEdit.builder().raw("short_h").value(888).build()))
+                            .build()))
+                .build());
+
+    EditorWorkspace patched = EditorLoadService.load(result.outputJar());
+    ItemSnapshot patchedVampireStone = item(patched, "Vampire stone");
+    assertEquals(777, patchedVampireStone.hpRestore());
+    assertEquals(888, patchedVampireStone.resourceRestore());
+    assertEffect(patchedVampireStone, "Consumable", "HP effect", "HP", "777");
+    assertEffect(patchedVampireStone, "Consumable", "Resource effect", "Blood/Soul", "888");
+  }
+
+  @Test
   void changingVinceStrengthStartTo15UpdatesExpectedHpPreview() throws Exception {
     EditorWorkspace workspace = workspace("vince-str-15.jar");
     HeroSnapshot vince = hero(workspace, VINCE);
@@ -280,6 +316,65 @@ class EditorPatchServiceTest {
     assertEquals(15, patchedVince.strength().start());
     assertEquals(79, expectedHp);
     assertEquals(expectedHp, patchedVince.baseHp());
+  }
+
+  @Test
+  void heroStatCurveShapeRoundTripsThroughGameDatPatch() throws Exception {
+    EditorWorkspace workspace = workspace("vince-str-curve.jar");
+    HeroSnapshot vince = hero(workspace, VINCE);
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .heroEdits(
+                    List.of(
+                        HeroEdit.builder()
+                            .heroId(vince.id())
+                            .strength(curve(vince.strength()).withCurve(37))
+                            .spirit(curve(vince.spirit()))
+                            .vitality(curve(vince.vitality()))
+                            .speed(curve(vince.speed()))
+                            .levelCap(vince.levelCap())
+                            .baseCritChance(vince.baseCritChance())
+                            .baseCritDamage(vince.baseCritDamage())
+                            .build()))
+                .build());
+
+    EditorWorkspace patched = EditorLoadService.load(result.outputJar());
+    assertEquals(37, hero(patched, VINCE).strength().curve());
+  }
+
+  @Test
+  void monsterExpFilarSoulRestoreRoundTripsFromRawGameDatHeader() throws Exception {
+    EditorWorkspace workspace = workspace("monster-filar.jar");
+    MonsterSnapshot monster = workspace.monsters().getFirst();
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .monsterEdits(
+                    List.of(
+                        MonsterEdit.builder()
+                            .monsterId(monster.id())
+                            .experience(1200)
+                            .filar(1000)
+                            .deathValue(25)
+                            .effectId(monster.effectId())
+                            .strength(monster.strength())
+                            .spirit(monster.spirit())
+                            .vitality(monster.vitality())
+                            .speed(monster.speed())
+                            .arrayEdits(List.of())
+                            .build()))
+                .build());
+
+    EditorWorkspace patched = EditorLoadService.load(result.outputJar());
+    MonsterSnapshot patchedMonster = patched.monsters().get(monster.id());
+    assertEquals(1200, patchedMonster.experience());
+    assertEquals(1000, patchedMonster.filar());
+    assertEquals(25, patchedMonster.deathValue());
   }
 
   private EditorWorkspace workspace(String outputFileName) throws Exception {

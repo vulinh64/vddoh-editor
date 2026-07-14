@@ -1,6 +1,5 @@
 package com.vddoh.editor.view.skills;
 
-import static com.vddoh.editor.view.ui.FxTableColumns.editableIntColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.intColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.textColumn;
 
@@ -27,27 +26,29 @@ public final class FxSkillsView extends BorderPane {
   private final ObservableList<FxSkillViewModel> skills = FXCollections.observableArrayList();
   private final FilteredList<FxSkillViewModel> filtered = new FilteredList<>(skills);
   private final TextField search = new TextField();
-  private final TableView<FxSkillViewModel> stickyTable = stickySkillTable();
-  private final TableView<FxSkillViewModel> table = skillTable();
-  private final TableView<FxSkillEffectViewModel> effects = effectTable();
+  private final TableView<FxSkillViewModel> stickyTable;
+  private final TableView<FxSkillViewModel> table;
+  private final FxSkillDetailPane detail;
 
   public FxSkillsView(FxEditorState state, FxNavigation navigation) {
     this.state = state;
+    stickyTable = stickySkillTable();
+    table = skillTable();
+    detail = new FxSkillDetailPane(state);
     getStyleClass().add("skills-view");
     stickyTable.setItems(filtered);
     table.setItems(filtered);
-    table.setEditable(true);
-    effects.setEditable(true);
+    table.setEditable(false);
     setTop(filters());
     javafx.scene.control.SplitPane skillSplit =
         FxStickyTableSplit.horizontal(stickyTable, table, 0.24);
-    javafx.scene.control.SplitPane split = new javafx.scene.control.SplitPane(skillSplit, effects);
-    split.setDividerPositions(0.62);
+    javafx.scene.control.SplitPane split = new javafx.scene.control.SplitPane(skillSplit, detail);
+    split.setDividerPositions(0.58);
     setCenter(split);
     table
         .getSelectionModel()
         .selectedItemProperty()
-        .addListener((_, _, skill) -> effects.setItems(skill == null ? null : skill.effects()));
+        .addListener((_, _, skill) -> detail.setSelectedSkill(skill));
     search.textProperty().addListener((_, _, _) -> refilter());
     state.workspaceProperty().addListener((_, _, workspace) -> load(workspace));
     navigation
@@ -127,14 +128,14 @@ public final class FxSkillsView extends BorderPane {
     return skills.stream().filter(FxSkillViewModel::changed).map(FxSkillViewModel::toEdit).toList();
   }
 
-  private static TableView<FxSkillViewModel> skillTable() {
+  private TableView<FxSkillViewModel> skillTable() {
     TableView<FxSkillViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
         .setAll(
             List.of(
-                editableIntColumn("Cost", FxSkillViewModel::costProperty, 72),
+                intColumn("Cost", skill -> skill.costProperty().get(), 72),
                 intColumn("Shape", FxSkillViewModel::areaShape, 72),
                 textColumn("Area", FxSkillViewModel::area, 82),
                 intColumn("Range", FxSkillViewModel::range, 72),
@@ -143,7 +144,7 @@ public final class FxSkillsView extends BorderPane {
     return table;
   }
 
-  private static TableView<FxSkillViewModel> stickySkillTable() {
+  private TableView<FxSkillViewModel> stickySkillTable() {
     TableView<FxSkillViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
@@ -153,23 +154,6 @@ public final class FxSkillsView extends BorderPane {
                 intColumn("ID", FxSkillViewModel::skillId, 62),
                 textColumn("Skill", FxSkillViewModel::skillName, 190),
                 intColumn("Level", FxSkillViewModel::level, 72)));
-    return table;
-  }
-
-  private static TableView<FxSkillEffectViewModel> effectTable() {
-    TableView<FxSkillEffectViewModel> table = new TableView<>();
-    table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
-    table
-        .getColumns()
-        .setAll(
-            List.of(
-                textColumn("Type", FxSkillEffectViewModel::type, 130),
-                intColumn("Index", FxSkillEffectViewModel::index, 62),
-                intColumn("Target ID", FxSkillEffectViewModel::targetId, 82),
-                textColumn("Target", FxSkillEffectViewModel::target, 150),
-                editableIntColumn("Value", FxSkillEffectViewModel::valueProperty, 72),
-                textColumn("Editable", FxSkillEffectViewModel::editable, 80),
-                textColumn("Notes", FxSkillEffectViewModel::notes, 220)));
     return table;
   }
 }

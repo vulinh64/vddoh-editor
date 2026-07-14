@@ -5,11 +5,15 @@ import static com.vddoh.editor.view.ui.FxTableColumns.intColumn;
 import static com.vddoh.editor.view.ui.FxTableColumns.textColumn;
 
 import com.vddoh.editor.data.BuildResult;
+import com.vddoh.editor.data.ChangeColumnName;
+import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.ui.FxDialogs;
 import com.vddoh.editor.view.ui.FxStickyTableSplit;
+import com.vddoh.editor.view.ui.FxTableColumns.ChangeLogContext;
+import com.vddoh.editor.view.ui.FxTableColumns.IntegerEditBounds;
 import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -38,7 +42,7 @@ public final class FxMonstersView extends BorderPane {
     getStyleClass().add("monsters-view");
     TableView<FxMonsterViewModel> sticky = stickyTable();
     TableView<FxMonsterViewModel> table = table();
-    TableView<FxMonsterArrayEntryViewModel> details = detailTable();
+    TableView<FxMonsterArrayEntryViewModel> details = detailTable(table);
     sticky.setItems(filtered);
     table.setItems(filtered);
     table
@@ -136,21 +140,69 @@ public final class FxMonstersView extends BorderPane {
         .toList();
   }
 
-  private static TableView<FxMonsterViewModel> table() {
+  private TableView<FxMonsterViewModel> table() {
     TableView<FxMonsterViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
         .getColumns()
         .setAll(
             List.of(
-                editableIntColumn("EXP", FxMonsterViewModel::experienceProperty, 70),
-                editableIntColumn("Filar", FxMonsterViewModel::filarProperty, 70),
-                editableIntColumn("Soul Restore", FxMonsterViewModel::deathValueProperty, 110),
-                editableIntColumn("Effect", FxMonsterViewModel::effectIdProperty, 70),
-                editableIntColumn("STR", FxMonsterViewModel::strengthProperty, 62),
-                editableIntColumn("SPI", FxMonsterViewModel::spiritProperty, 62),
-                editableIntColumn("VIT", FxMonsterViewModel::vitalityProperty, 62),
-                editableIntColumn("SPD", FxMonsterViewModel::speedProperty, 62),
+                editableIntColumn(
+                    "EXP",
+                    ChangeColumnName.EXP,
+                    FxMonsterViewModel::experienceProperty,
+                    100,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 4095, "EXP")),
+                editableIntColumn(
+                    "Filar",
+                    ChangeColumnName.FILAR,
+                    FxMonsterViewModel::filarProperty,
+                    100,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 4095, "Filar")),
+                editableIntColumn(
+                    "Soul Restore",
+                    ChangeColumnName.SOUL_RESTORE,
+                    FxMonsterViewModel::deathValueProperty,
+                    140,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 127, "Soul Restore")),
+                editableIntColumn(
+                    "Effect",
+                    ChangeColumnName.EFFECT,
+                    FxMonsterViewModel::effectIdProperty,
+                    100,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 255, "Effect")),
+                editableIntColumn(
+                    "STR",
+                    ChangeColumnName.STR,
+                    FxMonsterViewModel::strengthProperty,
+                    92,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 127, "STR")),
+                editableIntColumn(
+                    "SPI",
+                    ChangeColumnName.SPI,
+                    FxMonsterViewModel::spiritProperty,
+                    92,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 127, "SPI")),
+                editableIntColumn(
+                    "VIT",
+                    ChangeColumnName.VIT,
+                    FxMonsterViewModel::vitalityProperty,
+                    92,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 127, "VIT")),
+                editableIntColumn(
+                    "SPD",
+                    ChangeColumnName.SPD,
+                    FxMonsterViewModel::speedProperty,
+                    92,
+                    monsterChangeLogContext(),
+                    IntegerEditBounds.of(0, 127, "SPD")),
                 intColumn("HP", FxMonsterViewModel::baseHp, 72),
                 intColumn("Res", FxMonsterViewModel::baseResource, 72),
                 intColumn("Attack", FxMonsterViewModel::baseAttack, 72),
@@ -179,7 +231,8 @@ public final class FxMonstersView extends BorderPane {
     return table;
   }
 
-  private static TableView<FxMonsterArrayEntryViewModel> detailTable() {
+  private TableView<FxMonsterArrayEntryViewModel> detailTable(
+      TableView<FxMonsterViewModel> monsterTable) {
     TableView<FxMonsterArrayEntryViewModel> table = new TableView<>();
     table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
     table
@@ -190,9 +243,41 @@ public final class FxMonstersView extends BorderPane {
                 textColumn("Type", FxMonsterArrayEntryViewModel::type, 110),
                 intColumn("Index", FxMonsterArrayEntryViewModel::index, 62),
                 textColumn("Target", FxMonsterArrayEntryViewModel::target, 120),
-                editableIntColumn("Value", FxMonsterArrayEntryViewModel::valueProperty, 92),
+                editableIntColumn(
+                    "Value (row range)",
+                    ChangeColumnName.DETAIL_VALUE,
+                    FxMonsterArrayEntryViewModel::valueProperty,
+                    120,
+                    monsterArrayChangeLogContext(monsterTable)),
+                textColumn("Range", FxMonsterArrayEntryViewModel::range, 88),
                 textColumn("Editable", FxMonsterArrayEntryViewModel::editable, 78),
                 textColumn("Raw", FxMonsterArrayEntryViewModel::raw, 110)));
     return table;
+  }
+
+  private ChangeLogContext<FxMonsterViewModel> monsterChangeLogContext() {
+    return new ChangeLogContext<>(
+        state, EditorTabName.MONSTERS, FxMonsterViewModel::id, FxMonsterViewModel::name);
+  }
+
+  private ChangeLogContext<FxMonsterArrayEntryViewModel> monsterArrayChangeLogContext(
+      TableView<FxMonsterViewModel> monsterTable) {
+    return new ChangeLogContext<>(
+        state,
+        EditorTabName.MONSTERS,
+        _ -> selectedMonster(monsterTable) == null ? -1 : selectedMonster(monsterTable).id(),
+        entry ->
+            selectedMonster(monsterTable) == null
+                ? "%s %s #%d".formatted(entry.type(), entry.target(), entry.index())
+                : "%s / %s %s #%d"
+                    .formatted(
+                        selectedMonster(monsterTable).name(),
+                        entry.type(),
+                        entry.target(),
+                        entry.index()));
+  }
+
+  private static FxMonsterViewModel selectedMonster(TableView<FxMonsterViewModel> table) {
+    return table.getSelectionModel().getSelectedItem();
   }
 }

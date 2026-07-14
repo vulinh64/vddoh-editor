@@ -39,6 +39,10 @@ public record FxItemEffectViewModel(ItemEffectSnapshot effect, IntegerProperty n
     return effect.editable() ? "Yes" : "No";
   }
 
+  public String range() {
+    return effect.editable() ? "0.." + effect.max() : "";
+  }
+
   public boolean canEditValue() {
     return effect.editable();
   }

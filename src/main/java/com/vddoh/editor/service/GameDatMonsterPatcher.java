@@ -44,7 +44,7 @@ public final class GameDatMonsterPatcher {
     return summary;
   }
 
-  private static MonsterOffsets[] parseMonsterOffsets(byte[] data) {
+  public static MonsterOffsets[] parseMonsterOffsets(byte[] data) {
     int n = monsterStartOffset(data);
     MonsterOffsets[] offsets = new MonsterOffsets[u8(data[n++])];
     for (int monsterId = 0; monsterId < offsets.length; monsterId++) {

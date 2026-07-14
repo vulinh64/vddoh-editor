@@ -1,5 +1,8 @@
 package com.vddoh.editor.view;
 
+import com.vddoh.editor.data.ChangeColumnName;
+import com.vddoh.editor.data.ChangeLogEntry;
+import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.data.HeroEdit;
 import com.vddoh.editor.data.ItemEdit;
@@ -16,11 +19,17 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
+@Slf4j
 public final class FxEditorState {
 
   private final ObjectProperty<EditorWorkspace> workspace = new SimpleObjectProperty<>();
   private final ObjectProperty<Path> outputJar = new SimpleObjectProperty<>();
+  private final ObservableList<ChangeLogEntry> changeLog = FXCollections.observableArrayList();
   private final StringProperty status = new SimpleStringProperty("Choose a VDDOH JAR to begin.");
   private final BooleanProperty patchResistanceOverflow = new SimpleBooleanProperty(false);
   private final BooleanProperty patchEquipmentBonus = new SimpleBooleanProperty(false);
@@ -63,6 +72,43 @@ public final class FxEditorState {
 
   public void status(String message) {
     status.set(message);
+  }
+
+  public ObservableList<ChangeLogEntry> changeLog() {
+    return changeLog;
+  }
+
+  public void clearChangeLog() {
+    changeLog.clear();
+  }
+
+  public void recordChange(
+      EditorTabName tabName,
+      int entryId,
+      String entryName,
+      ChangeColumnName columnName,
+      Object oldValue,
+      Object newValue) {
+    String oldText = displayValue(oldValue);
+    String newText = displayValue(newValue);
+    if (oldText.equals(newText)) {
+      return;
+    }
+    ChangeLogEntry entry =
+        ChangeLogEntry.builder()
+            .tabName(tabName)
+            .entryId(entryId)
+            .entryName(entryName)
+            .columnName(columnName)
+            .oldValue(oldText)
+            .newValue(newText)
+            .build();
+    changeLog.add(entry);
+    log.info(entry.summary());
+  }
+
+  private static String displayValue(Object value) {
+    return value == null ? StringUtils.EMPTY : String.valueOf(value);
   }
 
   public BooleanProperty patchResistanceOverflowProperty() {

@@ -969,7 +969,7 @@ public final class EditorSupport {
   }
 
   public static int intValue(Object value) {
-    return value instanceof Number number ? number.intValue() & 0xffff : 0;
+    return value instanceof Number number ? number.intValue() : 0;
   }
 
   public static int shortValue(Object value) {

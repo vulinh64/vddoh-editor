@@ -190,7 +190,7 @@ public final class ItemDatPatcher {
   }
 
   private static int skipWeaponTail(byte[] data, int n) {
-    int flags = u8(data[n + 2]);
+    int flags = u8(data[n + 3]);
     return n + (((flags & 0x0f) > 1) ? 5 : 4);
   }
 
