@@ -23,6 +23,9 @@ public final class PatchSummary {
   private int heroSeeds;
   private int heroResistOverflow;
   private int equipmentBonusAggregation;
+  private int physicalDamageCap;
+  private int victoryExpReward;
+  private int monsterRewardParser;
   private int monsterHeader;
   private int monsterCoreStats;
   private int monsterEffect;
@@ -77,6 +80,14 @@ public final class PatchSummary {
     heroResistOverflow++;
   }
 
+  public void incrementVictoryExpReward() {
+    victoryExpReward++;
+  }
+
+  public void incrementMonsterRewardParser() {
+    monsterRewardParser++;
+  }
+
   public void incrementMonsterHeader() {
     monsterHeader++;
   }
@@ -111,6 +122,9 @@ public final class PatchSummary {
         && heroSeeds == 0
         && heroResistOverflow == 0
         && equipmentBonusAggregation == 0
+        && physicalDamageCap == 0
+        && victoryExpReward == 0
+        && monsterRewardParser == 0
         && monsterHeader == 0
         && monsterCoreStats == 0
         && monsterEffect == 0
@@ -133,6 +147,9 @@ public final class PatchSummary {
     addPart(parts, "heroCrit", heroSeeds);
     addPart(parts, "heroResistOverflow", heroResistOverflow);
     addPart(parts, "equipmentBonusAggregation", equipmentBonusAggregation);
+    addPart(parts, "physicalDamageCap", physicalDamageCap);
+    addPart(parts, "victoryExpReward", victoryExpReward);
+    addPart(parts, "monsterRewardParser", monsterRewardParser);
     addPart(parts, "monsterHeader", monsterHeader);
     addPart(parts, "monsterCoreStats", monsterCoreStats);
     addPart(parts, "monsterEffect", monsterEffect);

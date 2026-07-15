@@ -198,6 +198,44 @@ damage + damage * 90 / 100
 
 or roughly `190%` of normal damage after integer truncation.
 
+### Physical Damage Wrap Bug
+
+Hero-to-enemy physical damage is packed into hero result field `g.v`. The low
+10 bits hold the numeric damage shown by the battle popup, while higher bits
+hold flags such as critical, miss, and evade. The vanilla hero action method
+`g.a(f, boolean, b, boolean, boolean)` applies enemy damage through a masked
+value:
+
+```text
+enemyDamage = g.v & 1023
+```
+
+That is a wrap, not a clamp. High physical/critical damage can therefore become
+tiny real damage:
+
+```text
+1039 & 1023 = 15
+1040 & 1023 = 16
+```
+
+This explains the modded level-50 Romus test: a base crit damage value around
+`70%` plus Deadly Might bonus can push physical critical damage over `1000`,
+but vanilla masks the result before applying it to the enemy.
+
+The editor now has a `Patch physical damage cap` option. It patches `g.class`
+to preserve the existing packed result and flag layout, but clamps the low
+10-bit physical damage value to `999` immediately before the enemy-side damage
+call:
+
+```text
+if ((g.v & 1023) > 999) {
+  g.v = (g.v & ~1023) | 999;
+}
+```
+
+This was chosen instead of removing the mask because the high bits are already
+used for battle-result flags and UI behavior.
+
 ## Miss And Evasion
 
 Physical attacks have two separate failure states:
@@ -845,6 +883,43 @@ Avoid for now: Byte Buddy, because the editor patches JAR entries offline rather
 Possible but not preferred: BCEL.
 ```
 
+## Filar Save/New Game Inheritance
+
+Party Filar is stored in static hero field `g.q`.
+
+Confirmed save/load paths:
+
+```text
+j.e(int slot) writes g.q to VDBLOCK<slot> with DataOutputStream.writeInt
+j.d(int slot) reads VDBLOCK<slot> with DataInputStream.readInt and stores g.q
+```
+
+The "new game inherits saved Filar" behavior is a vanilla bug and useful
+exploit, so the editor intentionally does not patch it. The cause is that the
+new-game hero parser `j.g(int)` rebuilds the hero definition array `g.b` and
+resets active party array `g.a` to an empty array, but it does not clear `g.q`.
+Since `g.q` is static and is only initialized to `0` once when class `g` is
+loaded, any previously loaded save money survives when the player starts a new
+game without restarting the app.
+
+The early visible `+25 Filar` comes from script opcode `17` in `j.y()`.
+Opcode `17` decodes an amount from bytes `e[1]..e[3]`; bit `0x80` on `e[1]`
+means add instead of subtract. Two `+25` script commands are present in
+`m.dat`:
+
+```text
+0x000FA6: 11 80 00 19  -> add 25 Filar
+0x027CFE: 11 C0 00 19  -> add 25 Filar, with command flag bit 0x40
+```
+
+Therefore the exploit chain is:
+
+```text
+load save -> g.q becomes saved Filar
+start new game -> j.g(int) rebuilds heroes but leaves g.q unchanged
+early script event -> opcode 17 adds 25 more Filar
+```
+
 ## EXP Curve and Leveling Notes
 
 All heroes share the same EXP threshold curve.
@@ -873,10 +948,16 @@ Level 20:  5225
 Level 30: 11745
 ```
 
-There is also a likely EXP award bug in the battle-result code: EXP is awarded
-in chunks of 4, but when the remaining EXP is `1..3`, the code appears to award
-the remaining Filar value instead of the remaining EXP value. This can make the
-final small EXP remainder after a battle incorrect.
+The battle-result EXP award bug is confirmed in `j.class`: EXP is awarded in
+chunks of `4`, but when the remaining EXP is `1..3`, the vanilla code awards
+the remaining Filar value instead of the remaining EXP value.
+
+The editor now has a `Patch victory EXP reward` checkbox. When enabled during
+`Build Full Patched JAR`, it rewrites the single confirmed `j.class` instruction
+site so the final small EXP remainder uses pending EXP instead of pending Filar.
+The patch is guarded by an exact byte-pattern check plus semantic Class-File API
+detection and is reported independently as `ORIGINAL`, `PATCHED`, or `UNKNOWN`
+when loading a JAR.
 
 ## Monster Editor Notes
 
@@ -912,6 +993,14 @@ trusting reflected monster fields, because the reflected runtime values can
 carry signed/unsigned artifacts after patching. Regression coverage confirms a
 patched monster with `EXP=1200`, `Filar=1000`, and `Soul Restore=25` reloads
 with those exact values.
+
+The suspected Monster Filar address issue is now resolved: the address is
+correct, but vanilla `j.f(int)` has a signed-byte parser bug. It reads the EXP
+high byte and Filar low byte with signed `baload` semantics before assembling
+the 12-bit values. For example, `Filar=1000` stores low byte `232`, which can
+sign-extend into a negative short in the runtime parser. The editor has an
+optional `Patch monster EXP/Filar parser` checkbox that inserts `& 0xff` at
+both parser sites in `j.class`.
 
 Battle-result bytecode confirms the reward totals:
 

@@ -3,6 +3,7 @@ package com.vddoh.editor.view.ui;
 import com.vddoh.editor.data.BuildResult;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.data.PatchBuildRequest;
+import com.vddoh.editor.data.PatchState;
 import com.vddoh.editor.service.EditorLoadService;
 import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
@@ -11,14 +12,20 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -29,8 +36,13 @@ public final class FxCommandBar extends HBox {
   private final TextField inputJar = new TextField();
   private final TextField outputJar = new TextField();
   private static final String DEFAULT_OUTPUT_FILE = "vddoh-edited.jar";
+  private static final int CLASS_PATCH_OPTION_COUNT = 5;
   private final CheckBox patchResistanceOverflow = new CheckBox("Patch resistance overflow");
   private final CheckBox patchEquipmentBonus = new CheckBox("Patch equipment bonus overwrite");
+  private final CheckBox patchPhysicalDamageCap = new CheckBox("Patch physical damage cap");
+  private final CheckBox patchVictoryReward = new CheckBox("Patch victory EXP reward");
+  private final CheckBox patchMonsterRewardParser = new CheckBox("Patch monster EXP/Filar parser");
+  private final Button patchJar = new Button();
   private final Button load = new Button("Load");
   private Path latestOutputJar;
 
@@ -50,8 +62,9 @@ public final class FxCommandBar extends HBox {
     load.setOnAction(_ -> loadSelectedJar(load));
     Button buildDataOnly = new Button("Build Data-Only JAR");
     buildDataOnly.setOnAction(_ -> buildDataOnlyJar(buildDataOnly));
-    Button build = new Button("Build Full Patched JAR");
-    build.setOnAction(_ -> buildPatchedJar(build));
+    patchJar.setOnAction(_ -> showClassPatchDialog());
+    patchJar.setDisable(true);
+    updatePatchJarButton();
     Button view = new Button("View");
     view.setOnAction(_ -> viewOutputJar());
     Button changeLog = new Button("Change Log");
@@ -62,6 +75,21 @@ public final class FxCommandBar extends HBox {
     patchResistanceOverflow.setDisable(true);
     patchEquipmentBonus.selectedProperty().bindBidirectional(state.patchEquipmentBonusProperty());
     patchEquipmentBonus.setDisable(true);
+    patchPhysicalDamageCap
+        .selectedProperty()
+        .bindBidirectional(state.patchPhysicalDamageCapProperty());
+    patchPhysicalDamageCap.setDisable(true);
+    patchVictoryReward.selectedProperty().bindBidirectional(state.patchVictoryRewardProperty());
+    patchVictoryReward.setDisable(true);
+    patchMonsterRewardParser
+        .selectedProperty()
+        .bindBidirectional(state.patchMonsterRewardParserProperty());
+    patchMonsterRewardParser.setDisable(true);
+    patchResistanceOverflow.setOnAction(_ -> updatePatchJarButton());
+    patchEquipmentBonus.setOnAction(_ -> updatePatchJarButton());
+    patchPhysicalDamageCap.setOnAction(_ -> updatePatchJarButton());
+    patchVictoryReward.setOnAction(_ -> updatePatchJarButton());
+    patchMonsterRewardParser.setOnAction(_ -> updatePatchJarButton());
 
     HBox.setHgrow(inputJar, Priority.ALWAYS);
     HBox.setHgrow(outputJar, Priority.ALWAYS);
@@ -73,10 +101,8 @@ public final class FxCommandBar extends HBox {
             load,
             new Label("Output preview"),
             outputJar,
-            patchResistanceOverflow,
-            patchEquipmentBonus,
             buildDataOnly,
-            build,
+            patchJar,
             view,
             changeLog);
   }
@@ -153,13 +179,21 @@ public final class FxCommandBar extends HBox {
           setLatestOutputJar(workspace.outputJar());
           updateResistanceOverflowControl(workspace);
           updateEquipmentBonusControl(workspace);
+          updatePhysicalDamageCapControl(workspace);
+          updateVictoryRewardControl(workspace);
+          updateMonsterRewardParserControl(workspace);
+          patchJar.setDisable(false);
+          updatePatchJarButton();
           state.status(
-              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s"
+              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s. Physical damage cap patch state: %s. Victory reward patch state: %s. Monster reward parser patch state: %s"
                   .formatted(
                       workspace.items().size(),
                       workspace.inputJar().getFileName(),
                       workspace.resistanceOverflowState(),
-                      workspace.equipmentBonusState()));
+                      workspace.equipmentBonusState(),
+                      workspace.physicalDamageCapState(),
+                      workspace.victoryRewardState(),
+                      workspace.monsterRewardParserState()));
           load.disableProperty().unbind();
           load.setDisable(false);
         });
@@ -178,49 +212,205 @@ public final class FxCommandBar extends HBox {
 
   private void updateResistanceOverflowControl(EditorWorkspace workspace) {
     switch (workspace.resistanceOverflowState()) {
-      case "PATCHED" -> {
+      case PATCHED -> {
         state.patchResistanceOverflow(true);
         patchResistanceOverflow.setDisable(true);
-        patchResistanceOverflow.setTooltip(
-            new javafx.scene.control.Tooltip("Input JAR is already patched."));
       }
-      case "ORIGINAL" -> {
+      case ORIGINAL -> {
         state.patchResistanceOverflow(false);
         patchResistanceOverflow.setDisable(false);
-        patchResistanceOverflow.setTooltip(
-            new javafx.scene.control.Tooltip("Enable to patch g.class resistance overflow."));
       }
-      default -> {
+      case UNKNOWN -> {
         state.patchResistanceOverflow(false);
         patchResistanceOverflow.setDisable(true);
-        patchResistanceOverflow.setTooltip(
-            new javafx.scene.control.Tooltip("Unsupported g.class layout; patch disabled."));
       }
     }
   }
 
   private void updateEquipmentBonusControl(EditorWorkspace workspace) {
     switch (workspace.equipmentBonusState()) {
-      case "PATCHED" -> {
+      case PATCHED -> {
         state.patchEquipmentBonus(true);
         patchEquipmentBonus.setDisable(true);
-        patchEquipmentBonus.setTooltip(
-            new javafx.scene.control.Tooltip("Input JAR already accumulates equipment bonuses."));
       }
-      case "ORIGINAL" -> {
+      case ORIGINAL -> {
         state.patchEquipmentBonus(false);
         patchEquipmentBonus.setDisable(false);
-        patchEquipmentBonus.setTooltip(
-            new javafx.scene.control.Tooltip(
-                "Enable to patch g.class equipment byte_d overwrite into accumulation."));
       }
-      default -> {
+      case UNKNOWN -> {
         state.patchEquipmentBonus(false);
         patchEquipmentBonus.setDisable(true);
-        patchEquipmentBonus.setTooltip(
-            new javafx.scene.control.Tooltip("Unsupported g.class layout; patch disabled."));
       }
     }
+  }
+
+  private void updateVictoryRewardControl(EditorWorkspace workspace) {
+    switch (workspace.victoryRewardState()) {
+      case PATCHED -> {
+        state.patchVictoryReward(true);
+        patchVictoryReward.setDisable(true);
+      }
+      case ORIGINAL -> {
+        state.patchVictoryReward(false);
+        patchVictoryReward.setDisable(false);
+      }
+      case UNKNOWN -> {
+        state.patchVictoryReward(false);
+        patchVictoryReward.setDisable(true);
+      }
+    }
+  }
+
+  private void updatePhysicalDamageCapControl(EditorWorkspace workspace) {
+    switch (workspace.physicalDamageCapState()) {
+      case PATCHED -> {
+        state.patchPhysicalDamageCap(true);
+        patchPhysicalDamageCap.setDisable(true);
+      }
+      case ORIGINAL -> {
+        state.patchPhysicalDamageCap(false);
+        patchPhysicalDamageCap.setDisable(false);
+      }
+      case UNKNOWN -> {
+        state.patchPhysicalDamageCap(false);
+        patchPhysicalDamageCap.setDisable(true);
+      }
+    }
+  }
+
+  private void updateMonsterRewardParserControl(EditorWorkspace workspace) {
+    switch (workspace.monsterRewardParserState()) {
+      case PATCHED -> {
+        state.patchMonsterRewardParser(true);
+        patchMonsterRewardParser.setDisable(true);
+      }
+      case ORIGINAL -> {
+        state.patchMonsterRewardParser(false);
+        patchMonsterRewardParser.setDisable(false);
+      }
+      case UNKNOWN -> {
+        state.patchMonsterRewardParser(false);
+        patchMonsterRewardParser.setDisable(true);
+      }
+    }
+  }
+
+  private void updatePatchJarButton() {
+    int selected =
+        selectedOriginal(patchResistanceOverflow)
+            + selectedOriginal(patchEquipmentBonus)
+            + selectedOriginal(patchPhysicalDamageCap)
+            + selectedOriginal(patchVictoryReward)
+            + selectedOriginal(patchMonsterRewardParser);
+    int alreadyPatched =
+        alreadyPatched(patchResistanceOverflow)
+            + alreadyPatched(patchEquipmentBonus)
+            + alreadyPatched(patchPhysicalDamageCap)
+            + alreadyPatched(patchVictoryReward)
+            + alreadyPatched(patchMonsterRewardParser);
+    patchJar.setText(
+        "Patch JAR (%d/%d/%d)".formatted(selected, CLASS_PATCH_OPTION_COUNT, alreadyPatched));
+    patchJar.setTooltip(new Tooltip(patchJarTooltip()));
+  }
+
+  private void showClassPatchDialog() {
+    if (state.workspace() == null) {
+      state.status("Load a VDDOH JAR before choosing class patches.");
+      return;
+    }
+
+    Dialog<ButtonType> dialog = new Dialog<>();
+    dialog.initOwner(owner);
+    dialog.setTitle("Patch JAR");
+    dialog.setHeaderText("Choose class patches to include");
+    DialogPane pane = dialog.getDialogPane();
+    pane.getStylesheets()
+        .add(
+            Objects.requireNonNull(FxCommandBar.class.getResource("/editor.css")).toExternalForm());
+    pane.getStyleClass().add("patch-dialog");
+    pane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+    ((Button) pane.lookupButton(ButtonType.OK)).setText("Patch JAR");
+
+    CheckBox resistanceOption = dialogCheckBox(patchResistanceOverflow);
+    CheckBox equipmentOption = dialogCheckBox(patchEquipmentBonus);
+    CheckBox physicalDamageOption = dialogCheckBox(patchPhysicalDamageCap);
+    CheckBox victoryOption = dialogCheckBox(patchVictoryReward);
+    CheckBox monsterOption = dialogCheckBox(patchMonsterRewardParser);
+    VBox options =
+        new VBox(
+            8,
+            resistanceOption,
+            equipmentOption,
+            physicalDamageOption,
+            victoryOption,
+            monsterOption);
+    options.setPadding(new Insets(8, 0, 0, 0));
+    pane.setContent(options);
+
+    boolean shouldBuild = dialog.showAndWait().filter(ButtonType.OK::equals).isPresent();
+    resistanceOption
+        .selectedProperty()
+        .unbindBidirectional(patchResistanceOverflow.selectedProperty());
+    equipmentOption.selectedProperty().unbindBidirectional(patchEquipmentBonus.selectedProperty());
+    physicalDamageOption
+        .selectedProperty()
+        .unbindBidirectional(patchPhysicalDamageCap.selectedProperty());
+    victoryOption.selectedProperty().unbindBidirectional(patchVictoryReward.selectedProperty());
+    monsterOption
+        .selectedProperty()
+        .unbindBidirectional(patchMonsterRewardParser.selectedProperty());
+    if (shouldBuild) {
+      buildPatchedJar(patchJar);
+    }
+    updatePatchJarButton();
+  }
+
+  private CheckBox dialogCheckBox(CheckBox source) {
+    CheckBox checkbox = new CheckBox(source.getText());
+    checkbox.selectedProperty().bindBidirectional(source.selectedProperty());
+    checkbox.disableProperty().bind(source.disableProperty());
+    checkbox.setOnAction(_ -> updatePatchJarButton());
+    return checkbox;
+  }
+
+  private static int selectedOriginal(CheckBox item) {
+    return item.isSelected() && !item.isDisable() ? 1 : 0;
+  }
+
+  private static int alreadyPatched(CheckBox item) {
+    return item.isSelected() && item.isDisable() ? 1 : 0;
+  }
+
+  private String patchJarTooltip() {
+    EditorWorkspace workspace = state.workspace();
+    if (workspace == null) {
+      return "Load a VDDOH JAR to inspect available class patches.";
+    }
+    return """
+        Selected / Total / Already patched
+        Resistance overflow: %s
+        Equipment bonus overwrite: %s
+        Physical damage cap: %s
+        Victory EXP reward: %s
+        Monster EXP/Filar parser: %s
+        """
+        .formatted(
+            optionTooltip(workspace.resistanceOverflowState(), patchResistanceOverflow),
+            optionTooltip(workspace.equipmentBonusState(), patchEquipmentBonus),
+            optionTooltip(workspace.physicalDamageCapState(), patchPhysicalDamageCap),
+            optionTooltip(workspace.victoryRewardState(), patchVictoryReward),
+            optionTooltip(workspace.monsterRewardParserState(), patchMonsterRewardParser))
+        .strip();
+  }
+
+  private static String optionTooltip(PatchState state, CheckBox item) {
+    if (item.isSelected() && item.isDisable()) {
+      return "already patched";
+    }
+    if (item.isDisable()) {
+      return "unsupported layout";
+    }
+    return item.isSelected() ? "selected" : "available";
   }
 
   private void buildPatchedJar(Button build) {
@@ -228,6 +418,12 @@ public final class FxCommandBar extends HBox {
         state.patchResistanceOverflow() && !patchResistanceOverflow.isDisable();
     boolean equipmentBonusPatchRequested =
         state.patchEquipmentBonus() && !patchEquipmentBonus.isDisable();
+    boolean physicalDamageCapPatchRequested =
+        state.patchPhysicalDamageCap() && !patchPhysicalDamageCap.isDisable();
+    boolean victoryRewardPatchRequested =
+        state.patchVictoryReward() && !patchVictoryReward.isDisable();
+    boolean monsterRewardParserPatchRequested =
+        state.patchMonsterRewardParser() && !patchMonsterRewardParser.isDisable();
     Task<BuildResult> task =
         new Task<>() {
           @Override
@@ -236,6 +432,9 @@ public final class FxCommandBar extends HBox {
                 basePatchBuildRequest()
                     .resistanceOverflowPatchRequested(resistanceOverflowPatchRequested)
                     .equipmentBonusPatchRequested(equipmentBonusPatchRequested)
+                    .physicalDamageCapPatchRequested(physicalDamageCapPatchRequested)
+                    .victoryRewardPatchRequested(victoryRewardPatchRequested)
+                    .monsterRewardParserPatchRequested(monsterRewardParserPatchRequested)
                     .build());
           }
         };
@@ -256,6 +455,19 @@ public final class FxCommandBar extends HBox {
             patchEquipmentBonus.setSelected(true);
             patchEquipmentBonus.setDisable(true);
           }
+          if (physicalDamageCapPatchRequested) {
+            patchPhysicalDamageCap.setSelected(true);
+            patchPhysicalDamageCap.setDisable(true);
+          }
+          if (victoryRewardPatchRequested) {
+            patchVictoryReward.setSelected(true);
+            patchVictoryReward.setDisable(true);
+          }
+          if (monsterRewardParserPatchRequested) {
+            patchMonsterRewardParser.setSelected(true);
+            patchMonsterRewardParser.setDisable(true);
+          }
+          updatePatchJarButton();
         });
     task.setOnFailed(
         _ -> {
@@ -279,6 +491,9 @@ public final class FxCommandBar extends HBox {
                 basePatchBuildRequest()
                     .resistanceOverflowPatchRequested(false)
                     .equipmentBonusPatchRequested(false)
+                    .physicalDamageCapPatchRequested(false)
+                    .victoryRewardPatchRequested(false)
+                    .monsterRewardParserPatchRequested(false)
                     .build());
           }
         };

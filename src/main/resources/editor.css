@@ -141,3 +141,38 @@
   -fx-text-fill: #f3f7fc;
   -fx-border-color: #40506a;
 }
+
+.dialog-pane,
+.patch-dialog {
+  -fx-background-color: #171d26;
+}
+
+.dialog-pane > .header-panel {
+  -fx-background-color: #1b222d;
+}
+
+.dialog-pane > .header-panel .label,
+.dialog-pane .content.label,
+.dialog-pane .label,
+.dialog-pane .check-box {
+  -fx-text-fill: #e7edf5;
+}
+
+.dialog-pane .check-box:disabled {
+  -fx-opacity: 1;
+}
+
+.dialog-pane .check-box:disabled,
+.dialog-pane .check-box:disabled .text {
+  -fx-text-fill: #8190a4;
+}
+
+.dialog-pane .button-bar {
+  -fx-background-color: #171d26;
+}
+
+.dialog-pane .button {
+  -fx-background-color: #2b3a4f;
+  -fx-text-fill: #f3f7fc;
+  -fx-border-color: #40506a;
+}

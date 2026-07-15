@@ -8,8 +8,10 @@ Read these files first, in this order:
 
 1. `PROGRESS.md` - current implementation state and next checklist.
 2. `docs/REVERSE_ENGINEERING_INDEX.md` - compact map of useful decompiled classes and data files.
-3. `VDDOH-STATS-MECHANISM.md` - confirmed mechanics and field interpretations.
-4. `src/main/java/com/vddoh/editor/VddohDataEditor.java` and related `com.vddoh.editor` classes only after reading the targeted notes above.
+3. `docs/dat-bitmaps/README.md` - confirmed byte/bit maps for `game.dat` and `item.dat`.
+4. `docs/DECOMPILED_METHOD_LEDGER.md` - confirmed and suspected decompiled method roles.
+5. `VDDOH-STATS-MECHANISM.md` - confirmed mechanics and field interpretations.
+6. `src/main/java/com/vddoh/editor/VddohDataEditor.java` and related `com.vddoh.editor` classes only after reading the targeted notes above.
 
 Do not start by dumping entire decompiled classes into context. They are large and wasteful.
 
@@ -45,11 +47,37 @@ Current bytecode patching for the resistance overflow bug is a raw byte-pattern 
 
 Use targeted searches and summaries instead of reading huge files:
 
-- Search first with `rg -n "pattern" decompiled\\renamed-classes`.
-- Use `javap -classpath vddoh.jar -c -p <class>` for exact bytecode snippets.
+- Extract `src/test/resources/vddoh.jar` into `%USERPROFILE%/.vddoh-editor/temp/`
+  for local reverse-engineering work. Treat that extracted temp tree as the
+  working copy for class/resource inspection.
+- Search extracted/decompiled working files first with `rg -n "pattern"`.
+- Use `javap -classpath src\test\resources\vddoh.jar -c -p <class>` for exact
+  bytecode snippets.
 - Read small slices with PowerShell line ranges only after finding line numbers.
-- Prefer existing JSON exports in `decompiled/data-json-reflect/` and `decompiled/data-semantic/` when available.
+- Prefer existing JSON exports in the temp/decompiled working tree when
+  available.
 - Update `docs/REVERSE_ENGINEERING_INDEX.md` whenever a class/field mapping becomes stable.
+- Update `docs/dat-bitmaps/` whenever a `game.dat` or `item.dat` byte/bit mapping becomes stable.
+- Update `docs/DECOMPILED_METHOD_LEDGER.md` whenever an obfuscated method role becomes stable or a suspicion is disproven.
+
+## Data Bitmap Rules
+
+When confirming a new `.dat` field, update the relevant bitmap file with:
+
+- exact absolute offset, computed-relative offset, or parser-derived offset name;
+- byte and bit layout;
+- valid range;
+- confidence level;
+- whether it is safe for the editor to write.
+
+Use these confidence labels:
+
+- `Confirmed` - verified by decompiled/bytecode behavior and a patcher test or in-game check.
+- `Probable` - supported by decompiled/bytecode behavior but not yet patch/test confirmed.
+- `Unknown` - navigational or preserved bytes only; do not edit.
+
+Do not mark a field writable unless the editor writes only known offsets/bit ranges
+and behavior has been confirmed by tests or in-game verification.
 
 ## Safety Rules
 

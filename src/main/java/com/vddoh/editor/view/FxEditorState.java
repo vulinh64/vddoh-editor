@@ -33,6 +33,9 @@ public final class FxEditorState {
   private final StringProperty status = new SimpleStringProperty("Choose a VDDOH JAR to begin.");
   private final BooleanProperty patchResistanceOverflow = new SimpleBooleanProperty(false);
   private final BooleanProperty patchEquipmentBonus = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchPhysicalDamageCap = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchVictoryReward = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchMonsterRewardParser = new SimpleBooleanProperty(false);
   private Supplier<List<SkillEdit>> skillEdits = List::of;
   private Supplier<List<TalentEdit>> talentEdits = List::of;
   private Supplier<List<HeroEdit>> heroEdits = List::of;
@@ -133,6 +136,42 @@ public final class FxEditorState {
 
   public void patchEquipmentBonus(boolean patchEquipmentBonus) {
     this.patchEquipmentBonus.set(patchEquipmentBonus);
+  }
+
+  public BooleanProperty patchVictoryRewardProperty() {
+    return patchVictoryReward;
+  }
+
+  public BooleanProperty patchPhysicalDamageCapProperty() {
+    return patchPhysicalDamageCap;
+  }
+
+  public boolean patchPhysicalDamageCap() {
+    return patchPhysicalDamageCap.get();
+  }
+
+  public void patchPhysicalDamageCap(boolean patchPhysicalDamageCap) {
+    this.patchPhysicalDamageCap.set(patchPhysicalDamageCap);
+  }
+
+  public boolean patchVictoryReward() {
+    return patchVictoryReward.get();
+  }
+
+  public void patchVictoryReward(boolean patchVictoryReward) {
+    this.patchVictoryReward.set(patchVictoryReward);
+  }
+
+  public BooleanProperty patchMonsterRewardParserProperty() {
+    return patchMonsterRewardParser;
+  }
+
+  public boolean patchMonsterRewardParser() {
+    return patchMonsterRewardParser.get();
+  }
+
+  public void patchMonsterRewardParser(boolean patchMonsterRewardParser) {
+    this.patchMonsterRewardParser.set(patchMonsterRewardParser);
   }
 
   public void skillEditsSupplier(Supplier<List<SkillEdit>> skillEdits) {

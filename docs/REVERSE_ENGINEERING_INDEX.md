@@ -11,6 +11,8 @@ Central entry point for future VDDOH reverse-engineering. Read this before openi
 ../decompiled/data-tools/                   Older data extraction tools and notes
 src/main/java/com/vddoh/editor/             Current editor and patcher implementation
 me-lib/                                     Minimal Java ME/API jars unpacked into the built editor JAR
+docs/dat-bitmaps/                           Confirmed byte/bit maps for game.dat and item.dat
+docs/DECOMPILED_METHOD_LEDGER.md            Confirmed and suspected decompiled method roles
 VDDOH-STATS-MECHANISM.md                    Confirmed mechanics
 PROGRESS.md                                 Current status and next checklist
 ```
@@ -19,16 +21,17 @@ PROGRESS.md                                 Current status and next checklist
 
 Use `javap -classpath ../vddoh.jar -c -p <class>` for bytecode and `rg -n` for text search in renamed classes.
 
-| Obfuscated | Renamed file | Why it matters |
-|---|---|---|
-| `g` | `decompiled/renamed-classes/Hero.java` | Hero stats, level growth, crit, hit/evasion, equipment aggregation, resistance overflow bug. |
-| `f` | `decompiled/renamed-classes/Monster.java` | Monster stats, damage intake, skill/status resistance checks, EXP/Filar paths. |
-| `h` | `decompiled/renamed-classes/SkillLevelData.java` | Per-level skill cost, damage, area/range animation references. |
-| `i` | `decompiled/renamed-classes/Skill.java` | Skill definitions, level selection, tooltip drawing, status/damage arrays. |
-| `k` | `decompiled/renamed-classes/Item.java` | Item/equipment fields, rune/offensive/defensive effects, tooltip display. |
-| `l` | `decompiled/renamed-classes/Talent.java` | Group talents, passive hero bonuses, spell unlocks. |
-| `a` | `decompiled/renamed-classes/StatusEffect.java` | Status definitions, durations, modifiers, UI icons. |
-| `j` | `decompiled/renamed-classes/GameEngine.java` | Parser for packed game data, save/load, battle and UI flow. Very large; search narrowly. |
+| Obfuscated | Renamed file                                     | Why it matters                                                                                      |
+|------------|--------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| `g`        | `decompiled/renamed-classes/Hero.java`           | Hero stats, level growth, crit, hit/evasion, equipment aggregation, resistance overflow bug.        |
+| `b`        | `decompiled/renamed-classes/BattleUnit.java`     | Monster/battle-unit rows parsed from `game.dat`; names, packed EXP/Filar/Soul Restore, core stats.  |
+| `f`        | `decompiled/renamed-classes/Monster.java`        | Skill/action definition used by battle units; old "Monster" label is misleading for reward offsets. |
+| `h`        | `decompiled/renamed-classes/SkillLevelData.java` | Per-level skill cost, damage, area/range animation references.                                      |
+| `i`        | `decompiled/renamed-classes/Skill.java`          | Skill definitions, level selection, tooltip drawing, status/damage arrays.                          |
+| `k`        | `decompiled/renamed-classes/Item.java`           | Item/equipment fields, rune/offensive/defensive effects, tooltip display.                           |
+| `l`        | `decompiled/renamed-classes/Talent.java`         | Group talents, passive hero bonuses, spell unlocks.                                                 |
+| `a`        | `decompiled/renamed-classes/StatusEffect.java`   | Status definitions, durations, modifiers, UI icons.                                                 |
+| `j`        | `decompiled/renamed-classes/GameEngine.java`     | Parser for packed game data, save/load, battle and UI flow. Very large; search narrowly.            |
 
 ## Stable Mechanics Pointers
 
@@ -105,27 +108,51 @@ Prefer these files before opening huge decompiled classes:
 
 If a JSON file is large, search within it instead of reading all of it.
 
+## DAT Bitmaps
+
+Use `docs/dat-bitmaps/` for stable byte/bit mappings:
+
+```text
+docs/dat-bitmaps/README.md
+docs/dat-bitmaps/game-dat-bitmap.md
+docs/dat-bitmaps/item-dat-bitmap.md
+```
+
+Keep these focused on data-file layout, computed offsets, writable bit ranges,
+confidence, and source pointers. When a new `game.dat` or `item.dat` field is
+confirmed, update the relevant bitmap instead of burying the offset only in a
+general mechanics note.
+
+## Decompiled Method Ledger
+
+Use `docs/DECOMPILED_METHOD_LEDGER.md` for confirmed and suspected method roles
+in obfuscated runtime classes. Keep the ledger focused on methods we have
+actually touched or investigated; do not paste whole decompiled classes into it.
+
 ## Editor Patchers
 
 In `src/main/java/com/vddoh/editor/`:
 
-| Class | Purpose |
-|---|---|
-| `VddohDataEditor.java` | Application launcher. |
-| `view/FxEditorApplication.java` | JavaFX UI coordinator and main tab layout. |
-| `view/**` | JavaFX views and view-models. |
-| `data/**` | DTOs, rows, snapshots, patch requests, summaries, and read models. |
-| `service/EditorLoadService.java` | Loads selected JAR workspaces and applies raw `game.dat` monster reward headers so EXP/Filar/Soul Restore reload with packed 12-bit values instead of reflected signed artifacts. |
-| `service/EditorPatchService.java` | Patch build service. `buildFullPatch(PatchBuildRequest)` writes game.dat, item.dat, and optional `g.class` replacements in one cumulative JAR operation. |
-| `service/GameDatSkillPatcher.java` | Writes safe skill cost/damage/status changes. |
-| `service/GameDatTalentPatcher.java` | Writes safe talent amount/link changes. |
-| `service/GameDatHeroPatcher.java` | Writes hero stat curves, level cap, base crit bytes. |
-| `service/GameDatMonsterPatcher.java` | Writes conservative monster fields: EXP, Filar, Soul Restore, tail Effect ID, packed STR/SPI/VIT/SPD-like core stat bytes, and existing fixed-width effect/resistance/drop array entries. |
-| `service/ItemDatPatcher.java` | Writes safe item top-level fields and existing fixed-width decoded effect bytes. |
-| `service/GameDatStatusPatcher.java` | Writes safe status fields. |
-| `service/ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow; uses Class-File API semantic detection plus byte-minimal raw replacement. |
-| `service/EquipmentBonusClassPatcher.java` | Optional `g.class` bytecode patch for the equipment `byte_d` overwrite quirk; uses Class-File API to transform four assignment sites in `g.b()V` into accumulation sites. |
-| `utils/EditorSupport.java` | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers. |
+| Class                                         | Purpose                                                                                                                                                                                   |
+|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `VddohDataEditor.java`                        | Application launcher.                                                                                                                                                                     |
+| `view/FxEditorApplication.java`               | JavaFX UI coordinator and main tab layout.                                                                                                                                                |
+| `view/**`                                     | JavaFX views and view-models.                                                                                                                                                             |
+| `data/**`                                     | DTOs, rows, snapshots, patch requests, summaries, and read models.                                                                                                                        |
+| `service/EditorLoadService.java`              | Loads selected JAR workspaces and applies raw `game.dat` monster reward headers so EXP/Filar/Soul Restore reload with packed 12-bit values instead of reflected signed artifacts.         |
+| `service/EditorPatchService.java`             | Patch build service. `buildFullPatch(PatchBuildRequest)` writes game.dat, item.dat, and optional `g.class`/`j.class` replacements in one cumulative JAR operation.                        |
+| `service/GameDatSkillPatcher.java`            | Writes safe skill cost/damage/status changes.                                                                                                                                             |
+| `service/GameDatTalentPatcher.java`           | Writes safe talent amount/link changes.                                                                                                                                                   |
+| `service/GameDatHeroPatcher.java`             | Writes hero stat curves, level cap, base crit bytes.                                                                                                                                      |
+| `service/GameDatMonsterPatcher.java`          | Writes conservative monster fields: EXP, Filar, Soul Restore, tail Effect ID, packed STR/SPI/VIT/SPD-like core stat bytes, and existing fixed-width effect/resistance/drop array entries. |
+| `service/ItemDatPatcher.java`                 | Writes safe item top-level fields and existing fixed-width decoded effect bytes.                                                                                                          |
+| `service/GameDatStatusPatcher.java`           | Writes safe status fields.                                                                                                                                                                |
+| `service/ResistanceOverflowClassPatcher.java` | Optional `g.class` bytecode patch for resistance overflow; uses Class-File API semantic detection plus byte-minimal raw replacement.                                                      |
+| `service/EquipmentBonusClassPatcher.java`     | Optional `g.class` bytecode patch for the equipment `byte_d` overwrite quirk; uses Class-File API to transform four assignment sites in `g.b()V` into accumulation sites.                 |
+| `service/PhysicalDamageCapClassPatcher.java`  | Optional `g.class` bytecode patch for the high physical damage wrap bug; caps final hero-to-enemy physical damage to `999` before the vanilla low 10-bit result mask is used.              |
+| `service/VictoryRewardClassPatcher.java`      | Optional `j.class` bytecode patch for the victory EXP remainder bug; changes the final `1..3` EXP award branch to use the pending EXP remainder instead of the pending Filar remainder.   |
+| `service/MonsterRewardClassPatcher.java`      | Optional `j.class` bytecode patch for monster reward parsing; masks the EXP high byte and Filar low byte with `0xff` in `j.f(int)`.                                                       |
+| `utils/EditorSupport.java`                    | Shared JAR, reflection, Java ME classpath, decode, binary, and validation helpers.                                                                                                        |
 
 ## Future Direction
 

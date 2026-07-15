@@ -1,5 +1,6 @@
 package com.vddoh.editor.service;
 
+import static com.vddoh.editor.service.EditorPatchService.GAME_ENGINE_CLASS_ENTRY;
 import static com.vddoh.editor.service.EditorPatchService.HERO_CLASS_ENTRY;
 import static com.vddoh.editor.utils.EditorSupport.editorUserPath;
 import static com.vddoh.editor.utils.EditorSupport.readJarEntry;
@@ -42,10 +43,17 @@ public final class EditorLoadService {
             editorUserPath("dist").resolve(baseName + "-patched-0001.jar"));
     ExtractedDataFiles extracted = extractDataFilesFromJar(inputJar, gameDat, itemDat);
     byte[] heroClass = readJarEntry(inputJar, HERO_CLASS_ENTRY);
+    byte[] gameEngineClass = readJarEntry(inputJar, GAME_ENGINE_CLASS_ENTRY);
     ResistanceOverflowClassPatcher.State patchState =
         ResistanceOverflowClassPatcher.state(heroClass);
     EquipmentBonusClassPatcher.State equipmentBonusState =
         EquipmentBonusClassPatcher.state(heroClass);
+    PhysicalDamageCapClassPatcher.State physicalDamageCapState =
+        PhysicalDamageCapClassPatcher.state(heroClass);
+    VictoryRewardClassPatcher.State victoryRewardState =
+        VictoryRewardClassPatcher.state(gameEngineClass);
+    MonsterRewardClassPatcher.State monsterRewardParserState =
+        MonsterRewardClassPatcher.state(gameEngineClass);
     GameData data = GameData.loadFromOriginalClasses(inputJar);
     List<SkillLevelSnapshot> skillLevels =
         data.skillLevels.stream().map(EditorSnapshots::skillLevel).toList();
@@ -58,7 +66,7 @@ public final class EditorLoadService {
             Files.readAllBytes(gameDat));
     List<StatusSnapshot> statuses = data.statuses.stream().map(EditorSnapshots::status).toList();
     log.info(
-        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}",
+        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}, physical damage cap state {}, victory reward state {}, monster reward parser state {}",
         inputJar,
         skillLevels.size(),
         talents.size(),
@@ -67,7 +75,10 @@ public final class EditorLoadService {
         monsters.size(),
         statuses.size(),
         patchState,
-        equipmentBonusState);
+        equipmentBonusState,
+        physicalDamageCapState,
+        victoryRewardState,
+        monsterRewardParserState);
     return EditorWorkspace.builder()
         .inputJar(inputJar)
         .gameDat(gameDat)
@@ -75,8 +86,11 @@ public final class EditorLoadService {
         .outputJar(outputJar)
         .gameDatEntryName(extracted.gameDatEntryName())
         .itemDatEntryName(extracted.itemDatEntryName())
-        .resistanceOverflowState(patchState.name())
-        .equipmentBonusState(equipmentBonusState.name())
+        .resistanceOverflowState(PatchState.from(patchState))
+        .equipmentBonusState(PatchState.from(equipmentBonusState))
+        .physicalDamageCapState(PatchState.from(physicalDamageCapState))
+        .victoryRewardState(PatchState.from(victoryRewardState))
+        .monsterRewardParserState(PatchState.from(monsterRewardParserState))
         .skillLevels(skillLevels)
         .talents(talents)
         .heroes(heroes)

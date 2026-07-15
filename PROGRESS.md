@@ -17,6 +17,9 @@ This project contains the current JavaFX data editor and reverse-engineering not
 - [x] Added an IntelliJ Maven run configuration `VDDOH JavaFX (Maven)` because plain IntelliJ Application runs can miss the OpenJFX module/runtime path and fail with "JavaFX runtime components are missing".
 - [x] Added JavaFX resistance-overflow patch control. FX now mirrors Swing's ORIGINAL/PATCHED/UNKNOWN state behavior and includes the `g.class` patch in its combined `Build Full Patched JAR` flow.
 - [x] Added a separate JavaFX equipment-bonus aggregation patch control. It detects the vanilla `g.b()V` equipment `byte_d` overwrite shape, patches it with JDK 25 Class-File API so the bonus accumulates, and detects already-patched inputs independently from the resistance-overflow patch.
+- [x] Added a separate JavaFX victory EXP reward patch control. It detects the vanilla `j.class` victory-result remainder bug, patches the final small EXP award branch to use pending EXP instead of pending Filar, and detects already-patched inputs independently from the `g.class` patches.
+- [x] Added a separate JavaFX monster EXP/Filar parser patch control. The monster reward header offsets are confirmed correct, but vanilla `j.f(int)` parses the EXP high byte and Filar low byte as signed; the patch masks both bytes with `0xff` before combining the packed 12-bit values.
+- [x] Added a separate JavaFX physical damage cap patch control. It detects the vanilla `g.class` hero-to-enemy physical damage path that feeds `v & 1023` into enemy damage application, then caps final physical damage to `999` before the low 10-bit packed result can wrap.
 - [x] Updated `build-with-jdk.cmd` to delegate to the Maven wrapper so dependency resolution, annotation processing, resources, Java ME API unpacking, and shading stay in one build path.
 - [x] Moved and updated `VDDOH-STATS-MECHANISM.md`.
 - [x] Confirmed `build-with-jdk.cmd` builds the target JAR.
@@ -53,7 +56,10 @@ This project contains the current JavaFX data editor and reverse-engineering not
 - [x] Fixed reflected numeric decoding so hero stat growth curve values round-trip as full signed/unsigned Java ints where appropriate instead of being masked to 16 bits. Added regression coverage for hero curve build/reload.
 - [x] Editable Monsters table v1: names read-only; confirmed EXP, Filar, Soul Restore, Effect ID, and STR/SPI/VIT/SPD-like core stat bytes editable. HP/combat previews recalculate from the core bytes.
 - [x] Monster EXP, Filar, and Soul Restore now reload from the raw packed `game.dat` monster header bytes instead of reflected runtime fields, avoiding signed/unsigned reflection artifacts such as Filar `1000` reloading as `65456`.
+- [x] Confirmed the suspected Monster Filar address issue was a runtime parser sign-extension bug, not an editor offset bug. `byte1` low nibble is Filar high bits and `byte2` is Filar low bits.
 - [x] Added conservative Monster detail editing for existing fixed-width effect/resistance/drop array entries. The editor writes existing entries in place but still does not add/remove variable-length entries.
+- [x] Added `docs/dat-bitmaps/` as the stable byte/bit map for confirmed `game.dat` and `item.dat` layouts, with AGENTS guidance to update it when new writable offsets are confirmed.
+- [x] Added `docs/DECOMPILED_METHOD_LEDGER.md` to track confirmed, probable, suspected, and unknown method roles in the obfuscated runtime classes without dumping huge decompiled files.
 - [x] Editable Statuses table for safe status fields.
 - [x] Search support across Skills, Heroes, Items, Monsters, and Statuses.
 - [x] Build patched JAR by replacing modified entries.
@@ -90,6 +96,24 @@ JDK 25's Class-File API to transform `g.b()V`, changing the four known
 equipment `byte_d` assignment sites into accumulation sites. It is intentionally
 separate from the resistance overflow checkbox because it changes equipment
 stat aggregation/balance rather than fixing resistance byte overflow.
+
+The victory EXP reward patch is a separate `j.class` patcher. It uses JDK 25's
+Class-File API to semantically confirm the known victory remainder award shape,
+then applies a byte-minimal raw replacement so only the erroneous final
+`g.a[hero].a(s, false)` EXP-remainder argument changes to `r`.
+
+The monster EXP/Filar parser patch is another `j.class` patcher. It uses JDK
+25's Class-File API to transform the packed monster parser `j.f(int)`, inserting
+`& 0xff` at the two signed `baload` sites that feed the EXP high byte and Filar
+low byte. This preserves the confirmed `game.dat` offsets while fixing rewards
+whose relevant byte is `>= 128`.
+
+The physical damage cap patch is a separate `g.class` patcher. It targets the
+hero action method `g.a(f, boolean, b, boolean, boolean)` and injects a final
+cap immediately before the enemy-side `b.b(int, int)` damage call. The patch
+preserves existing battle-result flags and clamps only the low 10-bit displayed
+damage value to `999`, preventing high physical/critical hits such as `1039`
+from wrapping to `15` through the vanilla `v & 1023` mask.
 
 Bytecode tooling direction:
 

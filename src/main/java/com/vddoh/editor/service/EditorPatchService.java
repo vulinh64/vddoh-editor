@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public final class EditorPatchService {
 
   public static final String HERO_CLASS_ENTRY = "g.class";
+  public static final String GAME_ENGINE_CLASS_ENTRY = "j.class";
 
   public static final String GAME_DAT_FILE = "game.dat";
   private static final String ITEM_DAT_FILE = "item.dat";
@@ -32,7 +33,7 @@ public final class EditorPatchService {
     }
 
     log.info(
-        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}",
+        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}, physicalDamageCapPatchRequested={}, victoryRewardPatchRequested={}, monsterRewardParserPatchRequested={}",
         plan.skillPatches().size(),
         plan.talentPatches().size(),
         plan.heroPatches().size(),
@@ -40,7 +41,10 @@ public final class EditorPatchService {
         plan.monsterPatches().size(),
         plan.statusPatches().size(),
         plan.resistanceOverflowPatchRequested(),
-        plan.equipmentBonusPatchRequested());
+        plan.equipmentBonusPatchRequested(),
+        plan.physicalDamageCapPatchRequested(),
+        plan.victoryRewardPatchRequested(),
+        plan.monsterRewardParserPatchRequested());
 
     Files.createDirectories(workspace.outputJar().toAbsolutePath().getParent());
     Path outputJar = nextAvailableOutputJar(workspace.outputJar());
@@ -99,18 +103,48 @@ public final class EditorPatchService {
     if (!plan.classPatchRequested()) {
       return;
     }
-    byte[] heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
+    byte[] heroClass = null;
+    byte[] gameEngineClass = null;
     List<String> patchSummaries = new ArrayList<>();
     if (plan.resistanceOverflowPatchRequested()) {
+      heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
       patchSummaries.add("resistance overflow: " + ResistanceOverflowClassPatcher.patch(heroClass));
     }
     if (plan.equipmentBonusPatchRequested()) {
+      if (heroClass == null) {
+        heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
+      }
       EquipmentBonusClassPatcher.Result result = EquipmentBonusClassPatcher.patch(heroClass);
       heroClass = result.data();
       patchSummaries.add("equipment bonus: " + result.summary());
     }
+    if (plan.physicalDamageCapPatchRequested()) {
+      if (heroClass == null) {
+        heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
+      }
+      PhysicalDamageCapClassPatcher.Result result = PhysicalDamageCapClassPatcher.patch(heroClass);
+      heroClass = result.data();
+      patchSummaries.add("physical damage cap: " + result.summary());
+    }
+    if (plan.monsterRewardParserPatchRequested()) {
+      gameEngineClass = readJarEntry(plan.workspace().inputJar(), GAME_ENGINE_CLASS_ENTRY);
+      MonsterRewardClassPatcher.Result result = MonsterRewardClassPatcher.patch(gameEngineClass);
+      gameEngineClass = result.data();
+      patchSummaries.add("monster reward parser: " + result.summary());
+    }
+    if (plan.victoryRewardPatchRequested()) {
+      if (gameEngineClass == null) {
+        gameEngineClass = readJarEntry(plan.workspace().inputJar(), GAME_ENGINE_CLASS_ENTRY);
+      }
+      patchSummaries.add("victory reward: " + VictoryRewardClassPatcher.patch(gameEngineClass));
+    }
     summaries.add("class patches: " + String.join(", ", patchSummaries));
-    replacements.put(HERO_CLASS_ENTRY, heroClass);
+    if (heroClass != null) {
+      replacements.put(HERO_CLASS_ENTRY, heroClass);
+    }
+    if (gameEngineClass != null) {
+      replacements.put(GAME_ENGINE_CLASS_ENTRY, gameEngineClass);
+    }
   }
 
   private static void appendSummary(List<String> summaries, String label, PatchSummary summary) {
@@ -347,7 +381,10 @@ public final class EditorPatchService {
       List<MonsterPatch> monsterPatches,
       List<StatusPatch> statusPatches,
       boolean resistanceOverflowPatchRequested,
-      boolean equipmentBonusPatchRequested) {
+      boolean equipmentBonusPatchRequested,
+      boolean physicalDamageCapPatchRequested,
+      boolean victoryRewardPatchRequested,
+      boolean monsterRewardParserPatchRequested) {
 
     static PatchBuildPlan from(PatchBuildRequest request) {
       if (request == null || request.workspace() == null) {
@@ -362,7 +399,10 @@ public final class EditorPatchService {
           request.monsterEdits().stream().map(EditorPatchService::patch).toList(),
           request.statusEdits().stream().map(EditorPatchService::patch).toList(),
           request.resistanceOverflowPatchRequested(),
-          request.equipmentBonusPatchRequested());
+          request.equipmentBonusPatchRequested(),
+          request.physicalDamageCapPatchRequested(),
+          request.victoryRewardPatchRequested(),
+          request.monsterRewardParserPatchRequested());
     }
 
     boolean hasGameDataPatches() {
@@ -378,7 +418,11 @@ public final class EditorPatchService {
     }
 
     boolean classPatchRequested() {
-      return resistanceOverflowPatchRequested || equipmentBonusPatchRequested;
+      return resistanceOverflowPatchRequested
+          || equipmentBonusPatchRequested
+          || physicalDamageCapPatchRequested
+          || victoryRewardPatchRequested
+          || monsterRewardParserPatchRequested;
     }
   }
 }
