@@ -212,8 +212,8 @@ public final class MonsterRewardClassPatcher {
   private static boolean isGameDataRead(List<Instruction> instructions, int offset) {
     return offset >= 3
         && isGameDataField(instructions.get(offset - 3))
-        && isLoadSlot(instructions.get(offset - 2), 0)
-        && isIncrementSlot(instructions.get(offset - 1), 0)
+        && isLoadSlot(instructions.get(offset - 2))
+        && isIncrementSlot(instructions.get(offset - 1))
         && instructions.get(offset).opcode() == Opcode.BALOAD;
   }
 
@@ -239,12 +239,12 @@ public final class MonsterRewardClassPatcher {
         && MONSTER_REWARD_DESCRIPTOR.equals(field.type().stringValue());
   }
 
-  private static boolean isLoadSlot(Instruction instruction, int slot) {
-    return instruction instanceof LoadInstruction load && load.slot() == slot;
+  private static boolean isLoadSlot(Instruction instruction) {
+    return instruction instanceof LoadInstruction load && load.slot() == 0;
   }
 
-  private static boolean isIncrementSlot(Instruction instruction, int slot) {
-    return instruction instanceof IncrementInstruction increment && increment.slot() == slot;
+  private static boolean isIncrementSlot(Instruction instruction) {
+    return instruction instanceof IncrementInstruction increment && increment.slot() == 0;
   }
 
   private static boolean isPush255(Instruction instruction) {
@@ -301,11 +301,7 @@ public final class MonsterRewardClassPatcher {
     @Override
     public void accept(CodeBuilder builder, CodeElement element) {
       if (element instanceof Instruction instruction) {
-        if (expHighBytePending && instruction.opcode() == Opcode.ICONST_4) {
-          builder.sipush(255);
-          builder.iand();
-          counter.increment();
-        } else if (filarLowBytePending && instruction.opcode() == Opcode.I2S) {
+        if (shouldUnsignedMaskPendingByte(instruction)) {
           builder.sipush(255);
           builder.iand();
           counter.increment();
@@ -326,6 +322,11 @@ public final class MonsterRewardClassPatcher {
         expHighBytePending = false;
         filarLowBytePending = false;
       }
+    }
+
+    private boolean shouldUnsignedMaskPendingByte(Instruction instruction) {
+      return (expHighBytePending && instruction.opcode() == Opcode.ICONST_4)
+          || (filarLowBytePending && instruction.opcode() == Opcode.I2S);
     }
 
     private void remember(Instruction instruction) {

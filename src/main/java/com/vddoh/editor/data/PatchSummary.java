@@ -24,6 +24,8 @@ public final class PatchSummary {
   private int heroResistOverflow;
   private int equipmentBonusAggregation;
   private int physicalDamageCap;
+  private int highValueDisplay;
+  private int highValueGraphicDisplay;
   private int victoryExpReward;
   private int monsterRewardParser;
   private int monsterHeader;
@@ -123,6 +125,8 @@ public final class PatchSummary {
         && heroResistOverflow == 0
         && equipmentBonusAggregation == 0
         && physicalDamageCap == 0
+        && highValueDisplay == 0
+        && highValueGraphicDisplay == 0
         && victoryExpReward == 0
         && monsterRewardParser == 0
         && monsterHeader == 0
@@ -148,6 +152,8 @@ public final class PatchSummary {
     addPart(parts, "heroResistOverflow", heroResistOverflow);
     addPart(parts, "equipmentBonusAggregation", equipmentBonusAggregation);
     addPart(parts, "physicalDamageCap", physicalDamageCap);
+    addPart(parts, "highValueDisplay", highValueDisplay);
+    addPart(parts, "highValueGraphicDisplay", highValueGraphicDisplay);
     addPart(parts, "victoryExpReward", victoryExpReward);
     addPart(parts, "monsterRewardParser", monsterRewardParser);
     addPart(parts, "monsterHeader", monsterHeader);

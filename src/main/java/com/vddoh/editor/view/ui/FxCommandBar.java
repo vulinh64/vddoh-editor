@@ -3,7 +3,6 @@ package com.vddoh.editor.view.ui;
 import com.vddoh.editor.data.BuildResult;
 import com.vddoh.editor.data.EditorWorkspace;
 import com.vddoh.editor.data.PatchBuildRequest;
-import com.vddoh.editor.data.PatchState;
 import com.vddoh.editor.service.EditorLoadService;
 import com.vddoh.editor.service.EditorPatchService;
 import com.vddoh.editor.view.FxEditorState;
@@ -36,10 +35,13 @@ public final class FxCommandBar extends HBox {
   private final TextField inputJar = new TextField();
   private final TextField outputJar = new TextField();
   private static final String DEFAULT_OUTPUT_FILE = "vddoh-edited.jar";
-  private static final int CLASS_PATCH_OPTION_COUNT = 5;
+  private static final int CLASS_PATCH_OPTION_COUNT = 7;
   private final CheckBox patchResistanceOverflow = new CheckBox("Patch resistance overflow");
   private final CheckBox patchEquipmentBonus = new CheckBox("Patch equipment bonus overwrite");
   private final CheckBox patchPhysicalDamageCap = new CheckBox("Patch physical damage cap");
+  private final CheckBox patchHighValueDisplay = new CheckBox("Patch high-value display");
+  private final CheckBox patchHighValueGraphicDisplay =
+      new CheckBox("Patch high-value graphic display");
   private final CheckBox patchVictoryReward = new CheckBox("Patch victory EXP reward");
   private final CheckBox patchMonsterRewardParser = new CheckBox("Patch monster EXP/Filar parser");
   private final Button patchJar = new Button();
@@ -79,6 +81,14 @@ public final class FxCommandBar extends HBox {
         .selectedProperty()
         .bindBidirectional(state.patchPhysicalDamageCapProperty());
     patchPhysicalDamageCap.setDisable(true);
+    patchHighValueDisplay
+        .selectedProperty()
+        .bindBidirectional(state.patchHighValueDisplayProperty());
+    patchHighValueDisplay.setDisable(true);
+    patchHighValueGraphicDisplay
+        .selectedProperty()
+        .bindBidirectional(state.patchHighValueGraphicDisplayProperty());
+    patchHighValueGraphicDisplay.setDisable(true);
     patchVictoryReward.selectedProperty().bindBidirectional(state.patchVictoryRewardProperty());
     patchVictoryReward.setDisable(true);
     patchMonsterRewardParser
@@ -88,6 +98,8 @@ public final class FxCommandBar extends HBox {
     patchResistanceOverflow.setOnAction(_ -> updatePatchJarButton());
     patchEquipmentBonus.setOnAction(_ -> updatePatchJarButton());
     patchPhysicalDamageCap.setOnAction(_ -> updatePatchJarButton());
+    patchHighValueDisplay.setOnAction(_ -> updatePatchJarButton());
+    patchHighValueGraphicDisplay.setOnAction(_ -> updatePatchJarButton());
     patchVictoryReward.setOnAction(_ -> updatePatchJarButton());
     patchMonsterRewardParser.setOnAction(_ -> updatePatchJarButton());
 
@@ -180,18 +192,22 @@ public final class FxCommandBar extends HBox {
           updateResistanceOverflowControl(workspace);
           updateEquipmentBonusControl(workspace);
           updatePhysicalDamageCapControl(workspace);
+          updateHighValueDisplayControl(workspace);
+          updateHighValueGraphicDisplayControl(workspace);
           updateVictoryRewardControl(workspace);
           updateMonsterRewardParserControl(workspace);
           patchJar.setDisable(false);
           updatePatchJarButton();
           state.status(
-              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s. Physical damage cap patch state: %s. Victory reward patch state: %s. Monster reward parser patch state: %s"
+              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s. Physical damage cap patch state: %s. High-value display patch state: %s. High-value graphic display patch state: %s. Victory reward patch state: %s. Monster reward parser patch state: %s"
                   .formatted(
                       workspace.items().size(),
                       workspace.inputJar().getFileName(),
                       workspace.resistanceOverflowState(),
                       workspace.equipmentBonusState(),
                       workspace.physicalDamageCapState(),
+                      workspace.highValueDisplayState(),
+                      workspace.highValueGraphicDisplayState(),
                       workspace.victoryRewardState(),
                       workspace.monsterRewardParserState()));
           load.disableProperty().unbind();
@@ -278,6 +294,40 @@ public final class FxCommandBar extends HBox {
     }
   }
 
+  private void updateHighValueDisplayControl(EditorWorkspace workspace) {
+    switch (workspace.highValueDisplayState()) {
+      case PATCHED -> {
+        state.patchHighValueDisplay(true);
+        patchHighValueDisplay.setDisable(true);
+      }
+      case ORIGINAL -> {
+        state.patchHighValueDisplay(false);
+        patchHighValueDisplay.setDisable(false);
+      }
+      case UNKNOWN -> {
+        state.patchHighValueDisplay(false);
+        patchHighValueDisplay.setDisable(true);
+      }
+    }
+  }
+
+  private void updateHighValueGraphicDisplayControl(EditorWorkspace workspace) {
+    switch (workspace.highValueGraphicDisplayState()) {
+      case PATCHED -> {
+        state.patchHighValueGraphicDisplay(true);
+        patchHighValueGraphicDisplay.setDisable(true);
+      }
+      case ORIGINAL -> {
+        state.patchHighValueGraphicDisplay(false);
+        patchHighValueGraphicDisplay.setDisable(false);
+      }
+      case UNKNOWN -> {
+        state.patchHighValueGraphicDisplay(false);
+        patchHighValueGraphicDisplay.setDisable(true);
+      }
+    }
+  }
+
   private void updateMonsterRewardParserControl(EditorWorkspace workspace) {
     switch (workspace.monsterRewardParserState()) {
       case PATCHED -> {
@@ -300,12 +350,16 @@ public final class FxCommandBar extends HBox {
         selectedOriginal(patchResistanceOverflow)
             + selectedOriginal(patchEquipmentBonus)
             + selectedOriginal(patchPhysicalDamageCap)
+            + selectedOriginal(patchHighValueDisplay)
+            + selectedOriginal(patchHighValueGraphicDisplay)
             + selectedOriginal(patchVictoryReward)
             + selectedOriginal(patchMonsterRewardParser);
     int alreadyPatched =
         alreadyPatched(patchResistanceOverflow)
             + alreadyPatched(patchEquipmentBonus)
             + alreadyPatched(patchPhysicalDamageCap)
+            + alreadyPatched(patchHighValueDisplay)
+            + alreadyPatched(patchHighValueGraphicDisplay)
             + alreadyPatched(patchVictoryReward)
             + alreadyPatched(patchMonsterRewardParser);
     patchJar.setText(
@@ -334,6 +388,8 @@ public final class FxCommandBar extends HBox {
     CheckBox resistanceOption = dialogCheckBox(patchResistanceOverflow);
     CheckBox equipmentOption = dialogCheckBox(patchEquipmentBonus);
     CheckBox physicalDamageOption = dialogCheckBox(patchPhysicalDamageCap);
+    CheckBox highValueDisplayOption = dialogCheckBox(patchHighValueDisplay);
+    CheckBox highValueGraphicDisplayOption = dialogCheckBox(patchHighValueGraphicDisplay);
     CheckBox victoryOption = dialogCheckBox(patchVictoryReward);
     CheckBox monsterOption = dialogCheckBox(patchMonsterRewardParser);
     VBox options =
@@ -342,6 +398,8 @@ public final class FxCommandBar extends HBox {
             resistanceOption,
             equipmentOption,
             physicalDamageOption,
+            highValueDisplayOption,
+            highValueGraphicDisplayOption,
             victoryOption,
             monsterOption);
     options.setPadding(new Insets(8, 0, 0, 0));
@@ -355,6 +413,12 @@ public final class FxCommandBar extends HBox {
     physicalDamageOption
         .selectedProperty()
         .unbindBidirectional(patchPhysicalDamageCap.selectedProperty());
+    highValueDisplayOption
+        .selectedProperty()
+        .unbindBidirectional(patchHighValueDisplay.selectedProperty());
+    highValueGraphicDisplayOption
+        .selectedProperty()
+        .unbindBidirectional(patchHighValueGraphicDisplay.selectedProperty());
     victoryOption.selectedProperty().unbindBidirectional(patchVictoryReward.selectedProperty());
     monsterOption
         .selectedProperty()
@@ -391,19 +455,23 @@ public final class FxCommandBar extends HBox {
         Resistance overflow: %s
         Equipment bonus overwrite: %s
         Physical damage cap: %s
+        High-value display: %s
+        High-value graphic display: %s
         Victory EXP reward: %s
         Monster EXP/Filar parser: %s
         """
         .formatted(
-            optionTooltip(workspace.resistanceOverflowState(), patchResistanceOverflow),
-            optionTooltip(workspace.equipmentBonusState(), patchEquipmentBonus),
-            optionTooltip(workspace.physicalDamageCapState(), patchPhysicalDamageCap),
-            optionTooltip(workspace.victoryRewardState(), patchVictoryReward),
-            optionTooltip(workspace.monsterRewardParserState(), patchMonsterRewardParser))
+            optionTooltip(patchResistanceOverflow),
+            optionTooltip(patchEquipmentBonus),
+            optionTooltip(patchPhysicalDamageCap),
+            optionTooltip(patchHighValueDisplay),
+            optionTooltip(patchHighValueGraphicDisplay),
+            optionTooltip(patchVictoryReward),
+            optionTooltip(patchMonsterRewardParser))
         .strip();
   }
 
-  private static String optionTooltip(PatchState state, CheckBox item) {
+  private static String optionTooltip(CheckBox item) {
     if (item.isSelected() && item.isDisable()) {
       return "already patched";
     }
@@ -420,6 +488,10 @@ public final class FxCommandBar extends HBox {
         state.patchEquipmentBonus() && !patchEquipmentBonus.isDisable();
     boolean physicalDamageCapPatchRequested =
         state.patchPhysicalDamageCap() && !patchPhysicalDamageCap.isDisable();
+    boolean highValueDisplayPatchRequested =
+        state.patchHighValueDisplay() && !patchHighValueDisplay.isDisable();
+    boolean highValueGraphicDisplayPatchRequested =
+        state.patchHighValueGraphicDisplay() && !patchHighValueGraphicDisplay.isDisable();
     boolean victoryRewardPatchRequested =
         state.patchVictoryReward() && !patchVictoryReward.isDisable();
     boolean monsterRewardParserPatchRequested =
@@ -433,6 +505,8 @@ public final class FxCommandBar extends HBox {
                     .resistanceOverflowPatchRequested(resistanceOverflowPatchRequested)
                     .equipmentBonusPatchRequested(equipmentBonusPatchRequested)
                     .physicalDamageCapPatchRequested(physicalDamageCapPatchRequested)
+                    .highValueDisplayPatchRequested(highValueDisplayPatchRequested)
+                    .highValueGraphicDisplayPatchRequested(highValueGraphicDisplayPatchRequested)
                     .victoryRewardPatchRequested(victoryRewardPatchRequested)
                     .monsterRewardParserPatchRequested(monsterRewardParserPatchRequested)
                     .build());
@@ -458,6 +532,14 @@ public final class FxCommandBar extends HBox {
           if (physicalDamageCapPatchRequested) {
             patchPhysicalDamageCap.setSelected(true);
             patchPhysicalDamageCap.setDisable(true);
+          }
+          if (highValueDisplayPatchRequested) {
+            patchHighValueDisplay.setSelected(true);
+            patchHighValueDisplay.setDisable(true);
+          }
+          if (highValueGraphicDisplayPatchRequested) {
+            patchHighValueGraphicDisplay.setSelected(true);
+            patchHighValueGraphicDisplay.setDisable(true);
           }
           if (victoryRewardPatchRequested) {
             patchVictoryReward.setSelected(true);
@@ -492,6 +574,8 @@ public final class FxCommandBar extends HBox {
                     .resistanceOverflowPatchRequested(false)
                     .equipmentBonusPatchRequested(false)
                     .physicalDamageCapPatchRequested(false)
+                    .highValueDisplayPatchRequested(false)
+                    .highValueGraphicDisplayPatchRequested(false)
                     .victoryRewardPatchRequested(false)
                     .monsterRewardParserPatchRequested(false)
                     .build());

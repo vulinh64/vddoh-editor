@@ -18,6 +18,8 @@ public record EditorWorkspace(
     PatchState resistanceOverflowState,
     PatchState equipmentBonusState,
     PatchState physicalDamageCapState,
+    PatchState highValueDisplayState,
+    PatchState highValueGraphicDisplayState,
     PatchState victoryRewardState,
     PatchState monsterRewardParserState,
     List<SkillLevelSnapshot> skillLevels,

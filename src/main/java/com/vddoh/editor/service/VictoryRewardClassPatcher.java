@@ -17,8 +17,6 @@ public final class VictoryRewardClassPatcher {
 
   private static final String ENGINE_CLASS_NAME = "j";
   private static final String HERO_CLASS_NAME = "g";
-  private static final String HERO_EXP_FIELD = "q";
-  private static final String HERO_EXP_FIELD_DESCRIPTOR = "I";
   private static final String HERO_ARRAY_FIELD = "a";
   private static final String HERO_ARRAY_FIELD_DESCRIPTOR = "[Lg;";
   private static final String PENDING_EXP_FIELD = "r";
@@ -97,7 +95,7 @@ public final class VictoryRewardClassPatcher {
     if (state != State.ORIGINAL) {
       throw new IllegalArgumentException("Unsupported j.class layout for victory reward patch");
     }
-    int offset = indexOf(data, ORIGINAL);
+    int offset = indexOf(data);
     System.arraycopy(PATCHED, 0, data, offset, PATCHED.length);
     if (state(data) != State.PATCHED) {
       throw new IllegalStateException(
@@ -141,16 +139,10 @@ public final class VictoryRewardClassPatcher {
   private static boolean isRewardRemainderAward(
       List<Instruction> instructions, int offset, String rewardFieldName) {
     return instructions.get(offset) instanceof FieldInstruction heroArray
-        && isField(
-            heroArray,
-            Opcode.GETSTATIC,
-            HERO_CLASS_NAME,
-            HERO_ARRAY_FIELD,
-            HERO_ARRAY_FIELD_DESCRIPTOR)
+        && isField(heroArray, HERO_CLASS_NAME, HERO_ARRAY_FIELD, HERO_ARRAY_FIELD_DESCRIPTOR)
         && instructions.get(offset + 2).opcode() == Opcode.AALOAD
         && instructions.get(offset + 3) instanceof FieldInstruction reward
-        && isField(
-            reward, Opcode.GETSTATIC, ENGINE_CLASS_NAME, rewardFieldName, PENDING_REWARD_DESCRIPTOR)
+        && isField(reward, ENGINE_CLASS_NAME, rewardFieldName, PENDING_REWARD_DESCRIPTOR)
         && instructions.get(offset + 4).opcode() == Opcode.ICONST_0
         && instructions.get(offset + 5) instanceof InvokeInstruction invoke
         && invoke.opcode() == Opcode.INVOKEVIRTUAL
@@ -160,8 +152,8 @@ public final class VictoryRewardClassPatcher {
   }
 
   private static boolean isField(
-      FieldInstruction instruction, Opcode opcode, String owner, String name, String descriptor) {
-    return instruction.opcode() == opcode
+      FieldInstruction instruction, String owner, String name, String descriptor) {
+    return instruction.opcode() == Opcode.GETSTATIC
         && owner.equals(instruction.owner().asInternalName())
         && name.equals(instruction.name().stringValue())
         && descriptor.equals(instruction.type().stringValue());
@@ -177,9 +169,9 @@ public final class VictoryRewardClassPatcher {
     return count;
   }
 
-  private static int indexOf(byte[] data, byte[] pattern) {
-    for (int i = 0; i <= data.length - pattern.length; i++) {
-      if (matches(data, pattern, i)) {
+  private static int indexOf(byte[] data) {
+    for (int i = 0; i <= data.length - VictoryRewardClassPatcher.ORIGINAL.length; i++) {
+      if (matches(data, VictoryRewardClassPatcher.ORIGINAL, i)) {
         return i;
       }
     }

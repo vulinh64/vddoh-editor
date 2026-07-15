@@ -62,19 +62,34 @@ class EditorPatchServiceTest {
     byte[] heroClass = readJarEntry(workspace.inputJar(), EditorPatchService.HERO_CLASS_ENTRY);
     byte[] gameEngineClass =
         readJarEntry(workspace.inputJar(), EditorPatchService.GAME_ENGINE_CLASS_ENTRY);
-    HeroSnapshot vince = hero(workspace, VINCE);
+    HeroSnapshot vince = hero(workspace);
 
+    assertWorkspaceCounts(workspace);
+    assertWorkspacePatchStates(workspace);
+    assertClassPatchStates(heroClass, gameEngineClass);
+    assertVinceBaseline(vince);
+  }
+
+  private static void assertWorkspaceCounts(EditorWorkspace workspace) {
     assertEquals(138, workspace.skillLevels().size());
     assertEquals(38, workspace.talents().size());
     assertEquals(4, workspace.heroes().size());
     assertEquals(234, workspace.items().size());
     assertEquals(65, workspace.monsters().size());
     assertEquals(42, workspace.statuses().size());
+  }
+
+  private static void assertWorkspacePatchStates(EditorWorkspace workspace) {
     assertEquals(PatchState.ORIGINAL, workspace.resistanceOverflowState());
     assertEquals(PatchState.ORIGINAL, workspace.equipmentBonusState());
     assertEquals(PatchState.ORIGINAL, workspace.physicalDamageCapState());
+    assertEquals(PatchState.ORIGINAL, workspace.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, workspace.highValueGraphicDisplayState());
     assertEquals(PatchState.ORIGINAL, workspace.victoryRewardState());
     assertEquals(PatchState.ORIGINAL, workspace.monsterRewardParserState());
+  }
+
+  private static void assertClassPatchStates(byte[] heroClass, byte[] gameEngineClass) {
     assertEquals(
         ResistanceOverflowClassPatcher.State.ORIGINAL,
         ResistanceOverflowClassPatcher.state(heroClass));
@@ -84,9 +99,18 @@ class EditorPatchServiceTest {
         PhysicalDamageCapClassPatcher.State.ORIGINAL,
         PhysicalDamageCapClassPatcher.state(heroClass));
     assertEquals(
+        HighValueDisplayClassPatcher.State.ORIGINAL,
+        HighValueDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
+        HighValueGraphicDisplayClassPatcher.State.ORIGINAL,
+        HighValueGraphicDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
         VictoryRewardClassPatcher.State.ORIGINAL, VictoryRewardClassPatcher.state(gameEngineClass));
     assertEquals(
         MonsterRewardClassPatcher.State.ORIGINAL, MonsterRewardClassPatcher.state(gameEngineClass));
+  }
+
+  private static void assertVinceBaseline(HeroSnapshot vince) {
     assertEquals(1, vince.id());
     assertEquals(3, vince.strength().start());
     assertEquals(3, vince.vitality().start());
@@ -121,6 +145,8 @@ class EditorPatchServiceTest {
     assertEquals(PatchState.PATCHED, reloaded.resistanceOverflowState());
     assertEquals(PatchState.ORIGINAL, reloaded.equipmentBonusState());
     assertEquals(PatchState.ORIGINAL, reloaded.physicalDamageCapState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueGraphicDisplayState());
   }
 
   @Test
@@ -148,6 +174,8 @@ class EditorPatchServiceTest {
     assertEquals(PatchState.ORIGINAL, reloaded.resistanceOverflowState());
     assertEquals(PatchState.PATCHED, reloaded.equipmentBonusState());
     assertEquals(PatchState.ORIGINAL, reloaded.physicalDamageCapState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueGraphicDisplayState());
   }
 
   @Test
@@ -175,6 +203,67 @@ class EditorPatchServiceTest {
     assertEquals(PatchState.ORIGINAL, reloaded.resistanceOverflowState());
     assertEquals(PatchState.ORIGINAL, reloaded.equipmentBonusState());
     assertEquals(PatchState.PATCHED, reloaded.physicalDamageCapState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueGraphicDisplayState());
+  }
+
+  @Test
+  void appliesHighValueDisplayPatch() throws Exception {
+    EditorWorkspace workspace = workspace("high-value-display-only.jar");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .highValueDisplayPatchRequested(true)
+                .build());
+
+    byte[] gameEngineClass =
+        readJarEntry(result.outputJar(), EditorPatchService.GAME_ENGINE_CLASS_ENTRY);
+    assertEquals(
+        VictoryRewardClassPatcher.State.ORIGINAL, VictoryRewardClassPatcher.state(gameEngineClass));
+    assertEquals(
+        MonsterRewardClassPatcher.State.ORIGINAL, MonsterRewardClassPatcher.state(gameEngineClass));
+    assertEquals(
+        HighValueDisplayClassPatcher.State.PATCHED,
+        HighValueDisplayClassPatcher.state(gameEngineClass));
+    assertTrue(result.summary().contains("high-value display"));
+    EditorWorkspace reloaded = EditorLoadService.load(result.outputJar());
+    assertEquals(PatchState.ORIGINAL, reloaded.victoryRewardState());
+    assertEquals(PatchState.ORIGINAL, reloaded.monsterRewardParserState());
+    assertEquals(PatchState.PATCHED, reloaded.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueGraphicDisplayState());
+  }
+
+  @Test
+  void appliesHighValueGraphicDisplayPatch() throws Exception {
+    EditorWorkspace workspace = workspace("high-value-graphic-display-only.jar");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .highValueGraphicDisplayPatchRequested(true)
+                .build());
+
+    byte[] gameEngineClass =
+        readJarEntry(result.outputJar(), EditorPatchService.GAME_ENGINE_CLASS_ENTRY);
+    assertEquals(
+        VictoryRewardClassPatcher.State.ORIGINAL, VictoryRewardClassPatcher.state(gameEngineClass));
+    assertEquals(
+        MonsterRewardClassPatcher.State.ORIGINAL, MonsterRewardClassPatcher.state(gameEngineClass));
+    assertEquals(
+        HighValueDisplayClassPatcher.State.ORIGINAL,
+        HighValueDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
+        HighValueGraphicDisplayClassPatcher.State.PATCHED,
+        HighValueGraphicDisplayClassPatcher.state(gameEngineClass));
+    assertTrue(result.summary().contains("high-value graphic display"));
+    EditorWorkspace reloaded = EditorLoadService.load(result.outputJar());
+    assertEquals(PatchState.ORIGINAL, reloaded.victoryRewardState());
+    assertEquals(PatchState.ORIGINAL, reloaded.monsterRewardParserState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueDisplayState());
+    assertEquals(PatchState.PATCHED, reloaded.highValueGraphicDisplayState());
   }
 
   @Test
@@ -206,6 +295,8 @@ class EditorPatchServiceTest {
     assertEquals(PatchState.ORIGINAL, reloaded.resistanceOverflowState());
     assertEquals(PatchState.ORIGINAL, reloaded.equipmentBonusState());
     assertEquals(PatchState.ORIGINAL, reloaded.physicalDamageCapState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueGraphicDisplayState());
     assertEquals(PatchState.PATCHED, reloaded.victoryRewardState());
     assertEquals(PatchState.ORIGINAL, reloaded.monsterRewardParserState());
   }
@@ -241,6 +332,8 @@ class EditorPatchServiceTest {
     assertEquals(PatchState.ORIGINAL, reloaded.resistanceOverflowState());
     assertEquals(PatchState.ORIGINAL, reloaded.equipmentBonusState());
     assertEquals(PatchState.ORIGINAL, reloaded.physicalDamageCapState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueDisplayState());
+    assertEquals(PatchState.ORIGINAL, reloaded.highValueGraphicDisplayState());
     assertEquals(PatchState.ORIGINAL, reloaded.victoryRewardState());
     assertEquals(PatchState.PATCHED, reloaded.monsterRewardParserState());
   }
@@ -256,6 +349,8 @@ class EditorPatchServiceTest {
                 .resistanceOverflowPatchRequested(true)
                 .equipmentBonusPatchRequested(true)
                 .physicalDamageCapPatchRequested(true)
+                .highValueDisplayPatchRequested(true)
+                .highValueGraphicDisplayPatchRequested(true)
                 .victoryRewardPatchRequested(true)
                 .monsterRewardParserPatchRequested(true)
                 .build());
@@ -272,18 +367,28 @@ class EditorPatchServiceTest {
         PhysicalDamageCapClassPatcher.State.PATCHED,
         PhysicalDamageCapClassPatcher.state(heroClass));
     assertEquals(
+        HighValueDisplayClassPatcher.State.PATCHED,
+        HighValueDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
+        HighValueGraphicDisplayClassPatcher.State.PATCHED,
+        HighValueGraphicDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
         VictoryRewardClassPatcher.State.PATCHED, VictoryRewardClassPatcher.state(gameEngineClass));
     assertEquals(
         MonsterRewardClassPatcher.State.PATCHED, MonsterRewardClassPatcher.state(gameEngineClass));
     assertTrue(result.summary().contains("resistance overflow"));
     assertTrue(result.summary().contains("equipment bonus"));
     assertTrue(result.summary().contains("physical damage cap"));
+    assertTrue(result.summary().contains("high-value display"));
+    assertTrue(result.summary().contains("high-value graphic display"));
     assertTrue(result.summary().contains("victory reward"));
     assertTrue(result.summary().contains("monster reward parser"));
     EditorWorkspace reloaded = EditorLoadService.load(result.outputJar());
     assertEquals(PatchState.PATCHED, reloaded.resistanceOverflowState());
     assertEquals(PatchState.PATCHED, reloaded.equipmentBonusState());
     assertEquals(PatchState.PATCHED, reloaded.physicalDamageCapState());
+    assertEquals(PatchState.PATCHED, reloaded.highValueDisplayState());
+    assertEquals(PatchState.PATCHED, reloaded.highValueGraphicDisplayState());
     assertEquals(PatchState.PATCHED, reloaded.victoryRewardState());
     assertEquals(PatchState.PATCHED, reloaded.monsterRewardParserState());
   }
@@ -297,6 +402,8 @@ class EditorPatchServiceTest {
                 .resistanceOverflowPatchRequested(true)
                 .equipmentBonusPatchRequested(true)
                 .physicalDamageCapPatchRequested(true)
+                .highValueDisplayPatchRequested(true)
+                .highValueGraphicDisplayPatchRequested(true)
                 .victoryRewardPatchRequested(true)
                 .monsterRewardParserPatchRequested(true)
                 .build());
@@ -311,6 +418,8 @@ class EditorPatchServiceTest {
                 .resistanceOverflowPatchRequested(true)
                 .equipmentBonusPatchRequested(true)
                 .physicalDamageCapPatchRequested(true)
+                .highValueDisplayPatchRequested(true)
+                .highValueGraphicDisplayPatchRequested(true)
                 .victoryRewardPatchRequested(true)
                 .monsterRewardParserPatchRequested(true)
                 .build());
@@ -327,6 +436,12 @@ class EditorPatchServiceTest {
         PhysicalDamageCapClassPatcher.State.PATCHED,
         PhysicalDamageCapClassPatcher.state(heroClass));
     assertEquals(
+        HighValueDisplayClassPatcher.State.PATCHED,
+        HighValueDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
+        HighValueGraphicDisplayClassPatcher.State.PATCHED,
+        HighValueGraphicDisplayClassPatcher.state(gameEngineClass));
+    assertEquals(
         VictoryRewardClassPatcher.State.PATCHED, VictoryRewardClassPatcher.state(gameEngineClass));
     assertEquals(
         MonsterRewardClassPatcher.State.PATCHED, MonsterRewardClassPatcher.state(gameEngineClass));
@@ -337,8 +452,7 @@ class EditorPatchServiceTest {
   void refusesUnknownResistancePatchLayoutWithoutWritingOutputJar() throws Exception {
     Path corruptedJar = tempDir.resolve("corrupted-layout.jar");
     byte[] heroClass = readJarEntry(originalJar(), EditorPatchService.HERO_CLASS_ENTRY);
-    heroClass[indexOf(heroClass, RESISTANCE_ORIGINAL_PREFIX) + RESISTANCE_ORIGINAL_PREFIX.length] =
-        0x00;
+    heroClass[indexOf(heroClass) + RESISTANCE_ORIGINAL_PREFIX.length] = 0x00;
     replaceJarEntries(
         originalJar(), corruptedJar, Map.of(EditorPatchService.HERO_CLASS_ENTRY, heroClass));
     EditorWorkspace workspace =
@@ -450,7 +564,7 @@ class EditorPatchServiceTest {
   @Test
   void changingVinceStrengthStartTo15UpdatesExpectedHpPreview() throws Exception {
     EditorWorkspace workspace = workspace("vince-str-15.jar");
-    HeroSnapshot vince = hero(workspace, VINCE);
+    HeroSnapshot vince = hero(workspace);
 
     BuildResult result =
         EditorPatchService.buildFullPatch(
@@ -460,7 +574,7 @@ class EditorPatchServiceTest {
                 .build());
 
     EditorWorkspace patched = EditorLoadService.load(result.outputJar());
-    HeroSnapshot patchedVince = hero(patched, VINCE);
+    HeroSnapshot patchedVince = hero(patched);
     int expectedHp = (patchedVince.vitality().start() * 70 + 15 * 30) * 12 / 100;
     assertEquals(15, patchedVince.strength().start());
     assertEquals(79, expectedHp);
@@ -470,7 +584,7 @@ class EditorPatchServiceTest {
   @Test
   void heroStatCurveShapeRoundTripsThroughGameDatPatch() throws Exception {
     EditorWorkspace workspace = workspace("vince-str-curve.jar");
-    HeroSnapshot vince = hero(workspace, VINCE);
+    HeroSnapshot vince = hero(workspace);
 
     BuildResult result =
         EditorPatchService.buildFullPatch(
@@ -491,7 +605,7 @@ class EditorPatchServiceTest {
                 .build());
 
     EditorWorkspace patched = EditorLoadService.load(result.outputJar());
-    assertEquals(37, hero(patched, VINCE).strength().curve());
+    assertEquals(37, hero(patched).strength().curve());
   }
 
   @Test
@@ -530,11 +644,11 @@ class EditorPatchServiceTest {
     return EditorLoadService.load(originalJar()).withOutputJar(tempDir.resolve(outputFileName));
   }
 
-  private static HeroSnapshot hero(EditorWorkspace workspace, String name) {
+  private static HeroSnapshot hero(EditorWorkspace workspace) {
     return workspace.heroes().stream()
-        .filter(hero -> name.equals(hero.name()))
+        .filter(hero -> EditorPatchServiceTest.VINCE.equals(hero.name()))
         .findFirst()
-        .orElseThrow(() -> new AssertionError("Missing hero " + name));
+        .orElseThrow(() -> new AssertionError("Missing hero " + EditorPatchServiceTest.VINCE));
   }
 
   private static ItemSnapshot item(EditorWorkspace workspace, String name) {
@@ -589,11 +703,13 @@ class EditorPatchServiceTest {
         Objects.requireNonNull(EditorPatchServiceTest.class.getResource("/vddoh.jar")).toURI());
   }
 
-  private static int indexOf(byte[] data, byte[] pattern) {
-    for (int i = 0; i <= data.length - pattern.length; i++) {
+  private static int indexOf(byte[] data) {
+    for (int i = 0;
+        i <= data.length - EditorPatchServiceTest.RESISTANCE_ORIGINAL_PREFIX.length;
+        i++) {
       boolean matches = true;
-      for (int j = 0; j < pattern.length; j++) {
-        if (data[i + j] != pattern[j]) {
+      for (int j = 0; j < EditorPatchServiceTest.RESISTANCE_ORIGINAL_PREFIX.length; j++) {
+        if (data[i + j] != EditorPatchServiceTest.RESISTANCE_ORIGINAL_PREFIX[j]) {
           matches = false;
           break;
         }

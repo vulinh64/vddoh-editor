@@ -34,6 +34,8 @@ public final class FxEditorState {
   private final BooleanProperty patchResistanceOverflow = new SimpleBooleanProperty(false);
   private final BooleanProperty patchEquipmentBonus = new SimpleBooleanProperty(false);
   private final BooleanProperty patchPhysicalDamageCap = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchHighValueDisplay = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchHighValueGraphicDisplay = new SimpleBooleanProperty(false);
   private final BooleanProperty patchVictoryReward = new SimpleBooleanProperty(false);
   private final BooleanProperty patchMonsterRewardParser = new SimpleBooleanProperty(false);
   private Supplier<List<SkillEdit>> skillEdits = List::of;
@@ -152,6 +154,30 @@ public final class FxEditorState {
 
   public void patchPhysicalDamageCap(boolean patchPhysicalDamageCap) {
     this.patchPhysicalDamageCap.set(patchPhysicalDamageCap);
+  }
+
+  public BooleanProperty patchHighValueDisplayProperty() {
+    return patchHighValueDisplay;
+  }
+
+  public boolean patchHighValueDisplay() {
+    return patchHighValueDisplay.get();
+  }
+
+  public void patchHighValueDisplay(boolean patchHighValueDisplay) {
+    this.patchHighValueDisplay.set(patchHighValueDisplay);
+  }
+
+  public BooleanProperty patchHighValueGraphicDisplayProperty() {
+    return patchHighValueGraphicDisplay;
+  }
+
+  public boolean patchHighValueGraphicDisplay() {
+    return patchHighValueGraphicDisplay.get();
+  }
+
+  public void patchHighValueGraphicDisplay(boolean patchHighValueGraphicDisplay) {
+    this.patchHighValueGraphicDisplay.set(patchHighValueGraphicDisplay);
   }
 
   public boolean patchVictoryReward() {

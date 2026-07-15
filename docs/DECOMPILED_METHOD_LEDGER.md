@@ -39,26 +39,27 @@ VDDOH-STATS-MECHANISM.md
 
 `j` is very large. Do not read it whole. Search narrowly or use `javap`.
 
-| Method                                                                                              | Role                                                                                                                                                                                        | Confidence | Evidence / notes                                                                                         |
-|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------|
-| `public static java.lang.String a(int value, int widthBase)`                                        | Fixed-width decimal formatter that emits the low digits of `value` for a width implied by `widthBase`. `j.a(value, 1000)` gives a 3-digit modulo display: `1000 -> "000"`, `1234 -> "234"`. | Confirmed  | `javap -c -p j`; stat screen uses `sipush 1000` and measures `"999"`.                                    |
-| `public static void a(Graphics, Image, int, int, int, int, int, int, int)`                          | Sprite/tile draw helper used by stat screens, item tooltips, and battle result number rendering.                                                                                            | Confirmed  | Many call sites in `f`, `g`, `k`; parameters are image plus source/destination geometry.                 |
-| `public static java.lang.String a(byte[])`                                                          | Decode game byte-string/name bytes into Java `String`.                                                                                                                                      | Confirmed  | Used by item/name rendering and editor reflection support through matching runtime names.                |
-| `public static byte[] a(String, int)`                                                               | Encode or load byte-string data for text/save paths.                                                                                                                                        | Probable   | Signature and nearby string methods; not used by editor patchers.                                        |
-| `private static byte[] a(int)`                                                                      | Resource/data blob loader for packed assets or records.                                                                                                                                     | Suspected  | Signature cluster around image loading and resource methods.                                             |
-| `private static Image a(int)`                                                                       | Image resource loader/cache helper.                                                                                                                                                         | Probable   | Signature and image field usage.                                                                         |
-| `private static int f(int offset)`                                                                  | Parse `game.dat` monster/battle-unit rows into `b.a:[Lb;`, including packed EXP/Filar/Soul Restore reward header.                                                                           | Confirmed  | `javap -c -p j`; editor offset parser and `MonsterRewardClassPatcher` target.                            |
-| `private static int g(int offset)`                                                                  | Parse packed hero rows from `game.dat` into `g.b:[Lg;` and reset active party `g.a:[Lg;` to an empty array. Does not reset party Filar `g.q`.                                                | Confirmed  | `javap -c -p j`; method starts with `putstatic g.b`, `putstatic g.a`, then constructs `new g(1, heroIndex)`. |
-| `public static void d(int slot)`                                                                    | Load save slot `VDBLOCK<slot>` from RMS, including active party heroes, inventory/state vectors, and party Filar `g.q`.                                                                       | Confirmed  | `javap -c -p j`; reads `DataInputStream.readInt()` then `putstatic g.q:I`.                              |
-| `public static void e(int slot)`                                                                    | Write save slot `VDBLOCK<slot>` to RMS, including active party heroes, inventory/state vectors, and party Filar `g.q`.                                                                       | Confirmed  | `javap -c -p j`; writes `getstatic g.q:I` through `DataOutputStream.writeInt(I)`.                        |
-| `private void y()`                                                                                  | Script/event command dispatcher. Opcode `17` adds/subtracts party Filar based on event bytes.                                                                                                | Confirmed  | `javap -c -p j`; opcode `17` branch updates `g.q` from bytes `e[1]..e[3]`.                              |
-| `private static int a(l talent, int level)`                                                         | Talent value calculation or lookup helper.                                                                                                                                                  | Probable   | Method takes `Talent` plus level; `VDDOH-STATS-MECHANISM.md` confirms talent amount-per-level semantics. |
-| `private static int a(short[] values, int index)` / `private static int a(int[] values, int index)` | Packed array lookup/sum helper.                                                                                                                                                             | Suspected  | Seen near parser/math helpers; not safe for writes.                                                      |
-| `public static void a(i skill)`                                                                     | Enter or execute selected skill flow.                                                                                                                                                       | Probable   | Signature takes `Skill`; called from battle/menu flow.                                                   |
-| `public static Enumeration a(int, int, int, int, int, boolean)`                                     | Build/enumerate map or battle targets in an area/range.                                                                                                                                     | Suspected  | Returns `Enumeration`; related overloads accept coordinates and booleans.                                |
-| `private static boolean a(int, int, g)`                                                             | Coordinate/hero interaction check.                                                                                                                                                          | Suspected  | Battle/map helper shape; no confirmed gameplay edit depends on it.                                       |
-| `public static byte a()` / `public static byte b()`                                                 | Menu/state byte accessors.                                                                                                                                                                  | Unknown    | Duplicate obfuscated names; no stable role yet.                                                          |
-| `public static boolean a()` / `public static boolean b()`                                           | Game/UI state predicates.                                                                                                                                                                   | Unknown    | Duplicate obfuscated names; not used by editor.                                                          |
+| Method                                                                                              | Role                                                                                                                                                                                                | Confidence | Evidence / notes                                                                                                                                                           |
+|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `public static java.lang.String a(int value, int widthBase)`                                        | Fixed-width decimal formatter that emits the low digits of `value` for a width implied by `widthBase`. Vanilla `j.a(value, 1000)` gives a 3-digit modulo display: `1000 -> "000"`, `1234 -> "234"`. | Confirmed  | `javap -c -p j`; stat screen uses `sipush 1000` and measures `"999"`. `HighValueDisplayClassPatcher` changes only the `widthBase == 1000 && value > 999` case to `"999+"`. |
+| `private static void a(Graphics, int, int, boolean, int, boolean, boolean, boolean, int, int)`      | HP/resource bar helper. It draws bar fills from a packed `current | max << 16` value and, when its display flag is enabled, draws red sprite digits for current/max.                              | Confirmed  | `javap -c -p j`; `HighValueGraphicDisplayClassPatcher` clamps only the helper's sprite digit operands after bar math. |
+| `public static void a(Graphics, Image, int, int, int, int, int, int, int)`                          | Sprite/tile draw helper used by stat screens, item tooltips, and battle result number rendering.                                                                                                    | Confirmed  | Many call sites in `f`, `g`, `k`; parameters are image plus source/destination geometry.                                                                                   |
+| `public static java.lang.String a(byte[])`                                                          | Decode game byte-string/name bytes into Java `String`.                                                                                                                                              | Confirmed  | Used by item/name rendering and editor reflection support through matching runtime names.                                                                                  |
+| `public static byte[] a(String, int)`                                                               | Encode or load byte-string data for text/save paths.                                                                                                                                                | Probable   | Signature and nearby string methods; not used by editor patchers.                                                                                                          |
+| `private static byte[] a(int)`                                                                      | Resource/data blob loader for packed assets or records.                                                                                                                                             | Suspected  | Signature cluster around image loading and resource methods.                                                                                                               |
+| `private static Image a(int)`                                                                       | Image resource loader/cache helper.                                                                                                                                                                 | Probable   | Signature and image field usage.                                                                                                                                           |
+| `private static int f(int offset)`                                                                  | Parse `game.dat` monster/battle-unit rows into `b.a:[Lb;`, including packed EXP/Filar/Soul Restore reward header.                                                                                   | Confirmed  | `javap -c -p j`; editor offset parser and `MonsterRewardClassPatcher` target.                                                                                              |
+| `private static int g(int offset)`                                                                  | Parse packed hero rows from `game.dat` into `g.b:[Lg;` and reset active party `g.a:[Lg;` to an empty array. Does not reset party Filar `g.q`.                                                       | Confirmed  | `javap -c -p j`; method starts with `putstatic g.b`, `putstatic g.a`, then constructs `new g(1, heroIndex)`.                                                               |
+| `public static void d(int slot)`                                                                    | Load save slot `VDBLOCK<slot>` from RMS, including active party heroes, inventory/state vectors, and party Filar `g.q`.                                                                             | Confirmed  | `javap -c -p j`; reads `DataInputStream.readInt()` then `putstatic g.q:I`.                                                                                                 |
+| `public static void e(int slot)`                                                                    | Write save slot `VDBLOCK<slot>` to RMS, including active party heroes, inventory/state vectors, and party Filar `g.q`.                                                                              | Confirmed  | `javap -c -p j`; writes `getstatic g.q:I` through `DataOutputStream.writeInt(I)`.                                                                                          |
+| `private void y()`                                                                                  | Script/event command dispatcher. Opcode `17` adds/subtracts party Filar based on event bytes.                                                                                                       | Confirmed  | `javap -c -p j`; opcode `17` branch updates `g.q` from bytes `e[1]..e[3]`.                                                                                                 |
+| `private static int a(l talent, int level)`                                                         | Talent value calculation or lookup helper.                                                                                                                                                          | Probable   | Method takes `Talent` plus level; `VDDOH-STATS-MECHANISM.md` confirms talent amount-per-level semantics.                                                                   |
+| `private static int a(short[] values, int index)` / `private static int a(int[] values, int index)` | Packed array lookup/sum helper.                                                                                                                                                                     | Suspected  | Seen near parser/math helpers; not safe for writes.                                                                                                                        |
+| `public static void a(i skill)`                                                                     | Enter or execute selected skill flow.                                                                                                                                                               | Probable   | Signature takes `Skill`; called from battle/menu flow.                                                                                                                     |
+| `public static Enumeration a(int, int, int, int, int, boolean)`                                     | Build/enumerate map or battle targets in an area/range.                                                                                                                                             | Suspected  | Returns `Enumeration`; related overloads accept coordinates and booleans.                                                                                                  |
+| `private static boolean a(int, int, g)`                                                             | Coordinate/hero interaction check.                                                                                                                                                                  | Suspected  | Battle/map helper shape; no confirmed gameplay edit depends on it.                                                                                                         |
+| `public static byte a()` / `public static byte b()`                                                 | Menu/state byte accessors.                                                                                                                                                                          | Unknown    | Duplicate obfuscated names; no stable role yet.                                                                                                                            |
+| `public static boolean a()` / `public static boolean b()`                                           | Game/UI state predicates.                                                                                                                                                                           | Unknown    | Duplicate obfuscated names; not used by editor.                                                                                                                            |
 
 ### GameEngine Victory Reward Fields
 
@@ -163,10 +164,10 @@ we have actually assigned.
 | `public g(byte, byte)`                                                                | Hero constructor from packed hero id/type indices.                                                                                                                       | Confirmed                                                  | Reflection loading creates hero rows; field initialization includes battle result field `v = 0`.                                              |
 | `public final void b()`                                                               | Recompute derived hero combat stats from natural stats, equipment, talents, and statuses. Contains the resistance overflow clamp and equipment `byte_d` overwrite sites. | Confirmed                                                  | Both `ResistanceOverflowClassPatcher` and `EquipmentBonusClassPatcher` target `g.b()V`; in-game equipment/resistance tests verified behavior. |
 | `private int a(int level)`                                                            | Natural stat growth formula for a packed stat curve at a level.                                                                                                          | Confirmed                                                  | Formula matches editor `StatCurve.valueAtLevel` and level-cap in-game tests.                                                                  |
-| `public final void a(int damage, int percent, boolean resourceSide, boolean healing)` | Apply HP/resource change from damage or recovery. Stores battle result `v = damage                                                                                       | 0x1000` and updates packed current/max HP/resource fields. | Confirmed                                                                                                                                     | `javap -c -p g`; HP subtraction uses the incoming damage expression and masks stored HP/resource with `0xffff`. |
-| `public final void a(int damage, int percent, boolean resourceSide)`                  | Related HP/resource damage path, likely non-healing variant.                                                                                                             | Probable                                                   | Bytecode shows current HP/resource subtract path with `iload_1 * iload_2 / 100`.                                                              |
+| `public final void a(int damage, int percent, boolean resourceSide, boolean healing)` | Apply HP/resource damage or recovery. Stores battle result flags for visible feedback and updates packed current/max HP/resource fields.                                  | Confirmed                                                  | `javap -c -p g`; HP/resource math uses incoming `damage` directly, then masks stored HP/resource with `0xffff`. Caller paths may pass a pre-masked value. |
+| `public final void a(int damage, int percent, boolean resourceSide)`                  | Related HP/resource recovery path, likely non-healing or status/tick variant.                                                                                            | Probable                                                   | Bytecode uses incoming `damage` directly in `iload_1 * iload_2 / 100` and masks only the stored current/max fields.                           |
 | `public final void a(f action, boolean, b target, boolean, boolean)`                  | Resolve a hero action against a battle-unit target, including physical damage build-up, crit flagging, enemy damage application, and status follow-up.                    | Confirmed                                                  | `PhysicalDamageCapClassPatcher` targets the enemy-side `target.b(v & 1023, ...)` damage call in this method.                                  |
-| `public final void a(b)`                                                              | Resolve/receive action involving a battle unit or tile entity.                                                                                                           | Suspected                                                  | Signature and call cluster near battle methods; exact role not confirmed.                                                                     |
+| `public final void a(b)`                                                              | Resolve a battle-unit physical action against this hero, including miss/evasion, physical damage build-up, crit flagging, and hero HP application.                         | Confirmed                                                  | `javap -c -p g`; this path calls `this.a(v & 1023, 100, false, false)`, so actual hero Health damage receives the low-10-bit value.           |
 | `public final boolean a(int, boolean)`                                                | Check/modify a hero state with a flag, likely status or equipment/talent gating.                                                                                         | Unknown                                                    | Signature known; not mapped safely.                                                                                                           |
 | `public final boolean a(int)`                                                         | Predicate for a numeric hero state, possibly status/resistance/talent lookup.                                                                                            | Unknown                                                    | Multiple overloads; do not use for patch assumptions.                                                                                         |
 | `public final int a()`                                                                | Accessor for a derived hero value.                                                                                                                                       | Unknown                                                    | Duplicate obfuscated name; no stable assignment.                                                                                              |
@@ -342,6 +343,7 @@ skill/item data damage value can be 0..65535
 hero battle result stores numeric display/result in v low 10 bits
 damage/result display uses v & 1023, not a clamp
 hero-to-enemy physical damage uses v & 1023 before applying enemy HP damage
+enemy-to-hero physical damage uses v & 1023 before applying hero Health damage
 HP/resource storage itself is masked as 16-bit current/max fields
 ```
 
@@ -370,6 +372,71 @@ if ((v & 1023) > 999) {
 
 This preserves flags such as critical/miss/evasion and avoids using the
 reserved high bits as extra damage storage.
+
+The same low-10-bit handoff exists on the opposite physical direction:
+`g.a(b)` builds incoming battle-unit damage in `v`, applies the critical bonus,
+then calls the hero HP/resource updater as:
+
+```text
+this.a(v & 1023, 100, false, false)
+```
+
+This specific call uses `percent = 100`, so the truncated value is applied to
+Health rather than resource. The HP/resource updater methods themselves do not
+apply the `1023` mask. They use their incoming `damage` argument directly and
+mask only the packed current/max storage fields to `0xffff`. Therefore
+truncation is caller-driven: physical battle paths that pass `v & 1023` apply
+truncated real damage, while skill/recovery paths that pass raw `v` use the
+larger value.
+
+### High 3-Digit Display Wrap
+
+The shared formatter `j.a(int value, int widthBase)` emits fixed low digits.
+For `widthBase == 1000`, vanilla output is a 3-digit wrap:
+
+```text
+999  -> "999"
+1000 -> "000"
+1007 -> "007"
+1234 -> "234"
+```
+
+This affects text-rendered stat/menu values such as high HP/resource displays,
+but it does not change the underlying packed 16-bit HP/resource storage.
+
+`HighValueDisplayClassPatcher` patches only this formatter case:
+
+```text
+if (widthBase == 1000 && value > 999) {
+  return "999+";
+}
+```
+
+Values `0..999` keep the vanilla fixed-width output. Sprite/graphic battle
+damage digits do not use a plus glyph; those remain handled by the physical
+damage cap patch and saturate at `999`.
+
+The party overview screen does not use the shared text formatter for the red
+bar numbers. It first calls the HP/resource bar helper without its internal
+digit drawing, then draws six inline red sprite digits directly from active
+party hero fields:
+
+```text
+g.a[slot].l & 65535 -> current HP digits
+g.a[slot].m & 65535 -> current resource digits
+```
+
+Those inline digits used the same low-three-digit math, so `1001` displayed as
+`001`. `HighValueGraphicDisplayClassPatcher` is a separate patch from the text
+formatter patch. It caps only the operands used by sprite digit math:
+
+```text
+Math.min(displayValue, 999)
+```
+
+It covers the shared bar helper and the six confirmed party-overview inline
+digit sites. The actual packed HP/resource values and bar-fill calculations are
+left unchanged.
 
 ## Unmapped Method Inventory
 

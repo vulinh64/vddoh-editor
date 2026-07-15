@@ -398,10 +398,14 @@ public final class EditorSupport {
       boolean armor = ARMOR_SIDE.equals(side);
       boolean elemental = kind > 0 && kind <= 5;
       String target = runeElementName(kind);
+      String effectType = "Flat stat/damage";
+      if (elemental) {
+        effectType = armor ? "Anti-element" : "Element damage";
+      }
       rows.add(
           ItemEffectRow.of(
               side,
-              elemental ? (armor ? "Anti-element" : "Element damage") : "Flat stat/damage",
+              effectType,
               armor && elemental ? "Anti-" + target.toLowerCase(Locale.ROOT) : target,
               String.valueOf(value),
               StringUtils.EMPTY,

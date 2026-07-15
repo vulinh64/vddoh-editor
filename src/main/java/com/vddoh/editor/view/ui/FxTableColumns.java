@@ -109,7 +109,7 @@ public final class FxTableColumns {
       ToIntFunction<T> entryId,
       Function<T, String> entryName) {
 
-    public void record(T row, ChangeColumnName columnName, Object oldValue, Object newValue) {
+    public void recordChange(T row, ChangeColumnName columnName, Object oldValue, Object newValue) {
       state.recordChange(
           tabName, entryId.applyAsInt(row), entryName.apply(row), columnName, oldValue, newValue);
     }
@@ -171,7 +171,7 @@ public final class FxTableColumns {
     private final IntegerEditBounds bounds;
     private TextField editor;
 
-    private CommittingIntegerCell(
+    CommittingIntegerCell(
         ChangeColumnName columnName,
         Function<T, IntegerProperty> property,
         ChangeLogContext<T> changeLogContext,
@@ -260,7 +260,7 @@ public final class FxTableColumns {
           }
           property.apply(row).set(newValue);
           if (changeLogContext != null) {
-            changeLogContext.record(row, columnName, oldValue, newValue);
+            changeLogContext.recordChange(row, columnName, oldValue, newValue);
           }
         }
         commitEdit(newValue);

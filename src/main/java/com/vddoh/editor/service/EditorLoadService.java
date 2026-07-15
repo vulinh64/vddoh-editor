@@ -50,6 +50,10 @@ public final class EditorLoadService {
         EquipmentBonusClassPatcher.state(heroClass);
     PhysicalDamageCapClassPatcher.State physicalDamageCapState =
         PhysicalDamageCapClassPatcher.state(heroClass);
+    HighValueDisplayClassPatcher.State highValueDisplayState =
+        HighValueDisplayClassPatcher.state(gameEngineClass);
+    HighValueGraphicDisplayClassPatcher.State highValueGraphicDisplayState =
+        HighValueGraphicDisplayClassPatcher.state(gameEngineClass);
     VictoryRewardClassPatcher.State victoryRewardState =
         VictoryRewardClassPatcher.state(gameEngineClass);
     MonsterRewardClassPatcher.State monsterRewardParserState =
@@ -66,7 +70,7 @@ public final class EditorLoadService {
             Files.readAllBytes(gameDat));
     List<StatusSnapshot> statuses = data.statuses.stream().map(EditorSnapshots::status).toList();
     log.info(
-        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}, physical damage cap state {}, victory reward state {}, monster reward parser state {}",
+        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}, physical damage cap state {}, high-value display state {}, high-value graphic display state {}, victory reward state {}, monster reward parser state {}",
         inputJar,
         skillLevels.size(),
         talents.size(),
@@ -77,6 +81,8 @@ public final class EditorLoadService {
         patchState,
         equipmentBonusState,
         physicalDamageCapState,
+        highValueDisplayState,
+        highValueGraphicDisplayState,
         victoryRewardState,
         monsterRewardParserState);
     return EditorWorkspace.builder()
@@ -89,6 +95,8 @@ public final class EditorLoadService {
         .resistanceOverflowState(PatchState.from(patchState))
         .equipmentBonusState(PatchState.from(equipmentBonusState))
         .physicalDamageCapState(PatchState.from(physicalDamageCapState))
+        .highValueDisplayState(PatchState.from(highValueDisplayState))
+        .highValueGraphicDisplayState(PatchState.from(highValueGraphicDisplayState))
         .victoryRewardState(PatchState.from(victoryRewardState))
         .monsterRewardParserState(PatchState.from(monsterRewardParserState))
         .skillLevels(skillLevels)

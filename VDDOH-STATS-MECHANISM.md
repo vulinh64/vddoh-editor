@@ -236,6 +236,59 @@ if ((g.v & 1023) > 999) {
 This was chosen instead of removing the mask because the high bits are already
 used for battle-result flags and UI behavior.
 
+Follow-up HP/resource check:
+
+```text
+g.a(int damage, int percent, boolean ...)
+```
+
+does not mask `damage` down to 10 bits. It uses the incoming argument directly
+for HP/resource math and masks only the packed 16-bit current/max storage.
+However, physical battle callers can pass an already-truncated argument. The
+confirmed battle-unit-to-hero physical path `g.a(b)` applies real hero damage
+with:
+
+```text
+this.a(g.v & 1023, 100, false, false)
+```
+
+So the truncation is not merely visual there either: if incoming physical damage
+wraps before this call, the hero's actual Health damage uses the wrapped value.
+This specific call uses `percent = 100`, so resource loss is zero. The shared
+updater can split damage between Health and resource, but it only sees whatever
+value the caller passed.
+
+### High HP/Resource Display Wrap
+
+HP/resource current and max values are stored as 16-bit fields and battle math
+reads them as `value & 65535`. Values above `999` are therefore valid gameplay
+values, but vanilla text display can wrap because the shared 3-digit formatter
+shows only low digits:
+
+```text
+1000 -> "000"
+1007 -> "007"
+```
+
+The editor now has a `Patch high-value display` option. It patches the shared
+`j.a(value, 1000)` formatter so values above `999` display as:
+
+```text
+999+
+```
+
+This is intentionally display-only. It does not cap or change actual HP,
+resource, stat, or battle math values. Graphic/sprite battle damage numbers do
+not have a matching plus icon in `sys.png`, so those remain saturated to `999`
+through the physical damage cap patch.
+
+The party overview HP/resource bars use sprite digits instead of this text
+formatter. The editor therefore also has a separate `Patch high-value graphic
+display` option. That patch leaves the real packed HP/resource values and bar
+fill math alone, but caps the operands used by red sprite digits to `999`. This
+means cramped graphic-number views show `999` for `1000+` values instead of
+wrapping to `000`, `001`, and so on.
+
 ## Miss And Evasion
 
 Physical attacks have two separate failure states:

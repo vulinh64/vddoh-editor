@@ -18,6 +18,8 @@ public record PatchBuildRequest(
     boolean resistanceOverflowPatchRequested,
     boolean equipmentBonusPatchRequested,
     boolean physicalDamageCapPatchRequested,
+    boolean highValueDisplayPatchRequested,
+    boolean highValueGraphicDisplayPatchRequested,
     boolean victoryRewardPatchRequested,
     boolean monsterRewardParserPatchRequested) {
 

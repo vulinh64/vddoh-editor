@@ -1,6 +1,5 @@
 package com.vddoh.editor.service;
 
-import static com.vddoh.editor.utils.EditorSupport.readJarEntry;
 import static com.vddoh.editor.utils.EditorSupport.replaceJarEntries;
 
 import com.vddoh.editor.data.*;
@@ -33,7 +32,7 @@ public final class EditorPatchService {
     }
 
     log.info(
-        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}, physicalDamageCapPatchRequested={}, victoryRewardPatchRequested={}, monsterRewardParserPatchRequested={}",
+        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}, physicalDamageCapPatchRequested={}, highValueDisplayPatchRequested={}, highValueGraphicDisplayPatchRequested={}, victoryRewardPatchRequested={}, monsterRewardParserPatchRequested={}",
         plan.skillPatches().size(),
         plan.talentPatches().size(),
         plan.heroPatches().size(),
@@ -43,6 +42,8 @@ public final class EditorPatchService {
         plan.resistanceOverflowPatchRequested(),
         plan.equipmentBonusPatchRequested(),
         plan.physicalDamageCapPatchRequested(),
+        plan.highValueDisplayPatchRequested(),
+        plan.highValueGraphicDisplayPatchRequested(),
         plan.victoryRewardPatchRequested(),
         plan.monsterRewardParserPatchRequested());
 
@@ -53,7 +54,8 @@ public final class EditorPatchService {
 
     addGameDataPatch(plan, replacements, summaries);
     addItemDataPatch(plan, replacements, summaries);
-    addClassPatch(plan, replacements, summaries);
+    ClassPatchService.addClassPatches(
+        workspace, plan.classPatchSelection(), replacements, summaries);
 
     replaceJarEntries(workspace.inputJar(), outputJar, replacements);
     String summary = String.join("; ", summaries);
@@ -95,56 +97,6 @@ public final class EditorPatchService {
     summaries.add("items: " + ItemDatPatcher.patch(itemData, plan.itemPatches()));
     writeDebugDataFile(workspace, ITEM_DAT_FILE, itemData);
     replacements.put(workspace.itemDatEntryName(), itemData);
-  }
-
-  private static void addClassPatch(
-      PatchBuildPlan plan, Map<String, byte[]> replacements, List<String> summaries)
-      throws IOException {
-    if (!plan.classPatchRequested()) {
-      return;
-    }
-    byte[] heroClass = null;
-    byte[] gameEngineClass = null;
-    List<String> patchSummaries = new ArrayList<>();
-    if (plan.resistanceOverflowPatchRequested()) {
-      heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
-      patchSummaries.add("resistance overflow: " + ResistanceOverflowClassPatcher.patch(heroClass));
-    }
-    if (plan.equipmentBonusPatchRequested()) {
-      if (heroClass == null) {
-        heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
-      }
-      EquipmentBonusClassPatcher.Result result = EquipmentBonusClassPatcher.patch(heroClass);
-      heroClass = result.data();
-      patchSummaries.add("equipment bonus: " + result.summary());
-    }
-    if (plan.physicalDamageCapPatchRequested()) {
-      if (heroClass == null) {
-        heroClass = readJarEntry(plan.workspace().inputJar(), HERO_CLASS_ENTRY);
-      }
-      PhysicalDamageCapClassPatcher.Result result = PhysicalDamageCapClassPatcher.patch(heroClass);
-      heroClass = result.data();
-      patchSummaries.add("physical damage cap: " + result.summary());
-    }
-    if (plan.monsterRewardParserPatchRequested()) {
-      gameEngineClass = readJarEntry(plan.workspace().inputJar(), GAME_ENGINE_CLASS_ENTRY);
-      MonsterRewardClassPatcher.Result result = MonsterRewardClassPatcher.patch(gameEngineClass);
-      gameEngineClass = result.data();
-      patchSummaries.add("monster reward parser: " + result.summary());
-    }
-    if (plan.victoryRewardPatchRequested()) {
-      if (gameEngineClass == null) {
-        gameEngineClass = readJarEntry(plan.workspace().inputJar(), GAME_ENGINE_CLASS_ENTRY);
-      }
-      patchSummaries.add("victory reward: " + VictoryRewardClassPatcher.patch(gameEngineClass));
-    }
-    summaries.add("class patches: " + String.join(", ", patchSummaries));
-    if (heroClass != null) {
-      replacements.put(HERO_CLASS_ENTRY, heroClass);
-    }
-    if (gameEngineClass != null) {
-      replacements.put(GAME_ENGINE_CLASS_ENTRY, gameEngineClass);
-    }
   }
 
   private static void appendSummary(List<String> summaries, String label, PatchSummary summary) {
@@ -383,6 +335,8 @@ public final class EditorPatchService {
       boolean resistanceOverflowPatchRequested,
       boolean equipmentBonusPatchRequested,
       boolean physicalDamageCapPatchRequested,
+      boolean highValueDisplayPatchRequested,
+      boolean highValueGraphicDisplayPatchRequested,
       boolean victoryRewardPatchRequested,
       boolean monsterRewardParserPatchRequested) {
 
@@ -401,6 +355,8 @@ public final class EditorPatchService {
           request.resistanceOverflowPatchRequested(),
           request.equipmentBonusPatchRequested(),
           request.physicalDamageCapPatchRequested(),
+          request.highValueDisplayPatchRequested(),
+          request.highValueGraphicDisplayPatchRequested(),
           request.victoryRewardPatchRequested(),
           request.monsterRewardParserPatchRequested());
     }
@@ -414,15 +370,18 @@ public final class EditorPatchService {
     }
 
     boolean hasWork() {
-      return hasGameDataPatches() || !itemPatches.isEmpty() || classPatchRequested();
+      return hasGameDataPatches() || !itemPatches.isEmpty() || classPatchSelection().anyRequested();
     }
 
-    boolean classPatchRequested() {
-      return resistanceOverflowPatchRequested
-          || equipmentBonusPatchRequested
-          || physicalDamageCapPatchRequested
-          || victoryRewardPatchRequested
-          || monsterRewardParserPatchRequested;
+    ClassPatchSelection classPatchSelection() {
+      return new ClassPatchSelection(
+          resistanceOverflowPatchRequested,
+          equipmentBonusPatchRequested,
+          physicalDamageCapPatchRequested,
+          highValueDisplayPatchRequested,
+          highValueGraphicDisplayPatchRequested,
+          victoryRewardPatchRequested,
+          monsterRewardParserPatchRequested);
     }
   }
 }

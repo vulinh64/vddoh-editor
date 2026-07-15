@@ -15,6 +15,8 @@ public record FxTalentViewModel(
     IntegerProperty statusBonus,
     IntegerProperty resistanceBonus) {
 
+  private static final String RANGE_MESSAGE = "%s must be %d..%d";
+
   public FxTalentViewModel(TalentSnapshot talent) {
     this(
         talent,
@@ -163,14 +165,14 @@ public record FxTalentViewModel(
 
   private static int checked(int value, String label) {
     if (value < 0 || value > 15) {
-      throw new IllegalArgumentException("%s must be %d..%d".formatted(label, 0, 15));
+      throw new IllegalArgumentException(RANGE_MESSAGE.formatted(label, 0, 15));
     }
     return value;
   }
 
   private static int checked(int value) {
     if (value < 1 || value > 4) {
-      throw new IllegalArgumentException("%s must be %d..%d".formatted("Max Level", 1, 4));
+      throw new IllegalArgumentException(RANGE_MESSAGE.formatted("Max Level", 1, 4));
     }
     return value;
   }
@@ -180,7 +182,7 @@ public record FxTalentViewModel(
       return 0;
     }
     if (value < 1 || value > 256) {
-      throw new IllegalArgumentException("%s must be %d..%d".formatted(label, 1, 256));
+      throw new IllegalArgumentException(RANGE_MESSAGE.formatted(label, 1, 256));
     }
     return value;
   }

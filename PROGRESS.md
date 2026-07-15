@@ -20,6 +20,8 @@ This project contains the current JavaFX data editor and reverse-engineering not
 - [x] Added a separate JavaFX victory EXP reward patch control. It detects the vanilla `j.class` victory-result remainder bug, patches the final small EXP award branch to use pending EXP instead of pending Filar, and detects already-patched inputs independently from the `g.class` patches.
 - [x] Added a separate JavaFX monster EXP/Filar parser patch control. The monster reward header offsets are confirmed correct, but vanilla `j.f(int)` parses the EXP high byte and Filar low byte as signed; the patch masks both bytes with `0xff` before combining the packed 12-bit values.
 - [x] Added a separate JavaFX physical damage cap patch control. It detects the vanilla `g.class` hero-to-enemy physical damage path that feeds `v & 1023` into enemy damage application, then caps final physical damage to `999` before the low 10-bit packed result can wrap.
+- [x] Added a separate JavaFX high-value display patch control. It patches the shared `j.class` 3-digit text formatter so values over `999` display as `999+` instead of wrapping to low digits, without changing the underlying HP/resource/stat values.
+- [x] Added a separate JavaFX high-value graphic display patch control. It patches the `j.class` HP/resource bar sprite-digit helper so party overview graphic values above `999` saturate to `999` instead of wrapping to low digits, without changing the underlying packed values or bar math.
 - [x] Updated `build-with-jdk.cmd` to delegate to the Maven wrapper so dependency resolution, annotation processing, resources, Java ME API unpacking, and shading stay in one build path.
 - [x] Moved and updated `VDDOH-STATS-MECHANISM.md`.
 - [x] Confirmed `build-with-jdk.cmd` builds the target JAR.
@@ -114,6 +116,19 @@ cap immediately before the enemy-side `b.b(int, int)` damage call. The patch
 preserves existing battle-result flags and clamps only the low 10-bit displayed
 damage value to `999`, preventing high physical/critical hits such as `1039`
 from wrapping to `15` through the vanilla `v & 1023` mask.
+
+The high-value display patch is a separate `j.class` patcher. It targets the
+shared `j.a(int value, int widthBase)` text formatter and changes only the
+3-digit formatter case (`widthBase == 1000`). Values `0..999` keep the vanilla
+output, while values above `999` display as `999+`. This is display-only; the
+actual HP/resource/stat values remain the original 16-bit runtime values.
+
+The high-value graphic display patch is a separate `j.class` patcher. It targets
+the party/menu HP/resource bar helper `j.a(Graphics, int, int, boolean, int,
+boolean, boolean, boolean, int, int)` after the real packed value has already
+been used for bar fill calculations. It clamps only the current/max operands
+used by the three sprite digits, so values above `999` render as `999` in
+cramped graphic-number views where no plus glyph exists.
 
 Bytecode tooling direction:
 
