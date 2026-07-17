@@ -86,10 +86,6 @@ public final class PatchSummary {
     victoryExpReward++;
   }
 
-  public void incrementMonsterRewardParser() {
-    monsterRewardParser++;
-  }
-
   public void incrementMonsterHeader() {
     monsterHeader++;
   }
