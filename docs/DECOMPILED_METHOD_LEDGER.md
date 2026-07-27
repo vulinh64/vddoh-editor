@@ -222,8 +222,10 @@ display and in at least one confirmed HP application path.
 
 | Topic                                                              | Status                                                                                           |
 |--------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
-| `resistA` / `resistB` exact semantics                              | Existing entries are writable as packed shorts, but exact gameplay meaning remains conservative. |
-| `bytesD` exact semantics                                           | Existing byte entries are writable, but gameplay meaning is not fully named.                     |
+| Monster `effects` int-array protection entries                     | Confirmed for spell/element reduction. High byte is kind, bit `0x8000` marks protection, low 15 bits are the flat reduction. Ayrene has `0x038064`, meaning Light protection `100`, explaining why a 100-damage Light attack appeared to do no damage. |
+| Monster status resistance short-array currently keyed as `drops`    | Confirmed runtime status-resistance check in `b.b(int)`: high byte is status id, low byte is block chance. `100` blocks every `Random.nextInt(100)` roll. The editor raw key remains `drops` for now to avoid offset churn. |
+| `resistA` / `resistB` exact semantics                              | Existing entries are writable as packed shorts, but exact gameplay meaning remains conservative; `resistA` is read by a high-byte-id lookup helper used near monster action selection/weighting. |
+| `bytesD` exact semantics                                           | Existing byte entries are writable; byte values are copied into runtime status list setup through `StatusEffect.a(int, short[])`, but exact spawn/seed semantics are not fully named. |
 | Soul Restore split/duplication when both Romus and Manok need Soul | In-game test confirmed restoration for Romus; multi-skeleton distribution is not confirmed.      |
 
 ## `h` / SkillLevelData
@@ -362,16 +364,27 @@ This matches the observed modded Romus case where high critical damage around
 `1K+` was displayed and applied as roughly `15..16`.
 
 `PhysicalDamageCapClassPatcher` keeps the existing packed result/flag layout and
-injects a final cap immediately before the enemy-side `b.b(int, int)` call:
+removes the hero-to-enemy physical result's short casts before display packing.
+It then injects a final cap immediately before the enemy-side `b.b(int, int)`
+call:
 
 ```text
-if ((v & 1023) > 999) {
-  v = (v & ~1023) | 999;
+if ((v & 65535) > 999) {
+  v = (v & ~65535) | 999;
 }
 ```
 
 This preserves flags such as critical/miss/evasion and avoids using the
 reserved high bits as extra damage storage.
+Without removing the earlier `i2s` casts, very high critical hits can wrap to
+values like `77` before the final cap sees them.
+
+Open follow-up: final applied hero physical damage and displayed popup damage
+should both cap at `999`, with the critical marker preserved. In-game testing
+still showed `CRITICAL 005`, so the display path likely reads a wrapped or
+intermediate value rather than the final capped damage. Trace `g.v` writes and
+reads after `g.a(f, boolean, b, boolean, boolean)`, especially the renderer
+that draws the popup digits.
 
 The same low-10-bit handoff exists on the opposite physical direction:
 `g.a(b)` builds incoming battle-unit damage in `v`, applies the critical bonus,

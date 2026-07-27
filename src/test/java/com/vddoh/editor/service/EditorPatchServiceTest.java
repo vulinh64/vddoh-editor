@@ -208,6 +208,16 @@ class EditorPatchServiceTest {
   }
 
   @Test
+  void physicalDamageCapUsesRawDamageBandBeforeDisplayMask() {
+    assertEquals(998, PhysicalDamageCapClassPatcher.capPhysicalDamageResult(998));
+    assertEquals(999, PhysicalDamageCapClassPatcher.capPhysicalDamageResult(999));
+    assertEquals(999, PhysicalDamageCapClassPatcher.capPhysicalDamageResult(1000));
+    assertEquals(999, PhysicalDamageCapClassPatcher.capPhysicalDamageResult(1039));
+    assertEquals(999, PhysicalDamageCapClassPatcher.capPhysicalDamageResult(4101));
+    assertEquals(0x10000 | 999, PhysicalDamageCapClassPatcher.capPhysicalDamageResult(0x10000 | 4101));
+  }
+
+  @Test
   void appliesHighValueDisplayPatch() throws Exception {
     EditorWorkspace workspace = workspace("high-value-display-only.jar");
 

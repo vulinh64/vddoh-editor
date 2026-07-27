@@ -113,9 +113,11 @@ whose relevant byte is `>= 128`.
 The physical damage cap patch is a separate `g.class` patcher. It targets the
 hero action method `g.a(f, boolean, b, boolean, boolean)` and injects a final
 cap immediately before the enemy-side `b.b(int, int)` damage call. The patch
-preserves existing battle-result flags and clamps only the low 10-bit displayed
-damage value to `999`, preventing high physical/critical hits such as `1039`
-from wrapping to `15` through the vanilla `v & 1023` mask.
+preserves existing battle-result flags, removes known hero-to-enemy physical
+result short-cast truncation before display packing, and clamps final physical
+damage to `999` before the vanilla `v & 1023` handoff. Open follow-up: in-game
+testing still showed `CRITICAL 005`, so displayed popup damage is not yet
+confirmed to faithfully mirror the final capped damage.
 
 The high-value display patch is a separate `j.class` patcher. It targets the
 shared `j.a(int value, int widthBase)` text formatter and changes only the

@@ -223,18 +223,32 @@ This explains the modded level-50 Romus test: a base crit damage value around
 but vanilla masks the result before applying it to the enemy.
 
 The editor now has a `Patch physical damage cap` option. It patches `g.class`
-to preserve the existing packed result and flag layout, but clamps the low
-10-bit physical damage value to `999` immediately before the enemy-side damage
+to preserve the existing packed result and flag layout. The patch removes the
+hero-to-enemy physical result's short casts before display packing, then clamps
+the physical damage value to `999` immediately before the enemy-side damage
 call:
 
 ```text
-if ((g.v & 1023) > 999) {
-  g.v = (g.v & ~1023) | 999;
+if ((g.v & 65535) > 999) {
+  g.v = (g.v & ~65535) | 999;
 }
 ```
 
 This was chosen instead of removing the mask because the high bits are already
 used for battle-result flags and UI behavior.
+
+The short-cast removal matters for very high critical hits. A popup such as
+`CRITICAL 077` means the result had already wrapped before the final damage
+handoff; a late cap cannot recover the original value after that cast.
+
+Open follow-up: the desired invariant is that final applied hero physical
+damage is capped at `999` and the popup displays that same capped value, e.g.
+high critical hits should show `CRITICAL 999`. A later in-game check still
+showed `CRITICAL 005`, so the popup likely reads a wrapped/intermediate value
+or a later packed display payload instead of the final capped damage value.
+Next investigation should trace the popup source after `g.a(f, boolean, b,
+boolean, boolean)`, especially `g.v` writes/reads around the final
+`b.b(int, int)` damage call and the renderer path.
 
 Follow-up HP/resource check:
 
@@ -1137,18 +1151,75 @@ The editor now exposes existing fixed-width monster array entries in a detail
 table:
 
 ```text
-Effects              three-byte packed entries
+Effects              three-byte packed damage/protection entries
 Resistance/Status A  two-byte packed entries
 Resistance/Status B  two-byte packed entries
 Byte Array           one-byte packed entries
-Drops                two-byte packed entries
+Status Resistance    two-byte packed entries, raw patch key still `drops`
 ```
 
 These entries are edited in place only. The editor intentionally does not
 add/remove entries yet because changing variable-length counts shifts every
-following packed offset in `game.dat`. The two short arrays are still labeled
-conservatively as `Resistance/Status A/B` until their exact gameplay semantics
-are confirmed against bytecode and in-game tests.
+following packed offset in `game.dat`.
+
+Confirmed monster spell/element protection path:
+
+```text
+effects entry:
+  high byte        = damage/effect kind
+  bit 0x8000       = protection/reduction entry
+  low 15 bits      = flat reduction value
+```
+
+The monster skill-damage path sums matching protection entries and subtracts
+that value from incoming skill damage. This is the monster-side counterpart of
+the previously confirmed hero elemental damage reduction behavior: it is flat
+damage protection, not percent immunity.
+
+Ayrene confirms the Light clue:
+
+```text
+Ayrene (54) effects[2] = 0x038064
+  kind 3       = Light
+  protection   = yes
+  value        = 100
+
+Ayrene's Wache (18) effects[2] = 0x038014
+  kind 3       = Light
+  protection   = yes
+  value        = 20
+```
+
+So Ayrene takes `max(light damage - 100, 0)`. A 100-damage Light attack appears
+fully immune; stronger Light attacks should still deal the excess damage.
+
+Kopfzerquetscher confirms the same formula for Fire:
+
+```text
+Kopfzerquetscher (runtime id 63, displayed name "Kopfzerquetscher (40)")
+  effects[2] = 0x018050
+    kind 1       = Fire
+    protection   = yes
+    value        = 80
+
+Fireball level 4 base damage 150 - Fire protection 80 = 70 final damage
+```
+
+Confirmed monster status-resistance path:
+
+```text
+status resistance entry:
+  high byte = status id
+  low byte  = block chance
+```
+
+Runtime method `b.b(int)` compares the low byte to `Random.nextInt(100)`.
+A value of `100` blocks the status every time. The editor still uses the raw
+patch key `drops` for this array until the offset carrier is renamed, but the
+UI label now shows it as Status Resistance. The two short arrays still labeled
+`Resistance/Status A/B` remain conservative; `resistA` is read by a high-byte-id
+lookup helper near monster action weighting, while `resistB` has not shown a
+stable gameplay use yet.
 
 ## Editor Notes
 

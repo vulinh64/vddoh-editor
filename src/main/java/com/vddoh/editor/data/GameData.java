@@ -69,6 +69,7 @@ public final class GameData {
       Object[] skills = staticArray(skillClass, skillClass, 0);
       byte[][] damageGroups = staticByte2d(itemClass, 0);
       String[] skillNames = decodedNames(skills, decode);
+      String[] statusNames = decodedNames(statuses, decode);
       log.info(
           "Original class arrays: statuses={}, skills={}, damageGroups={}",
           statuses.length,
@@ -85,7 +86,8 @@ public final class GameData {
           data.skillLevels,
           decode);
       appendStatusRows(data.statuses, statuses, decode);
-      appendMonsterRows(data.monsters, staticArray(monsterClass, monsterClass, 0), decode);
+      appendMonsterRows(
+          data.monsters, staticArray(monsterClass, monsterClass, 0), statusNames, decode);
       appendHeroRows(data.heroes, largerStaticArray(heroClass, heroClass), decode);
       appendTalentRows(
           data.talents, staticArray(talentClass, talentClass, 1), true, skillNames, decode);
@@ -261,13 +263,15 @@ public final class GameData {
     }
   }
 
-  private static void appendMonsterRows(List<MonsterRow> rows, Object[] monsters, Method decode) {
+  private static void appendMonsterRows(
+      List<MonsterRow> rows, Object[] monsters, String[] statusNames, Method decode) {
     for (int i = 0; monsters != null && i < monsters.length; i++) {
       Object monster = monsters[i];
       int[] actions = intArray(raw(monster, 18));
       int[] effects = intArray(raw(monster, 20));
       short[] drops = shortArray(raw(monster, 24));
-      List<MonsterArrayEntrySnapshot> arrayEntries = monsterArrayEntries(monster, effects, drops);
+      List<MonsterArrayEntrySnapshot> arrayEntries =
+          monsterArrayEntries(monster, effects, drops, statusNames);
       rows.add(
           MonsterRow.of(
               i,
@@ -294,13 +298,13 @@ public final class GameData {
   }
 
   private static List<MonsterArrayEntrySnapshot> monsterArrayEntries(
-      Object monster, int[] effects, short[] drops) {
+      Object monster, int[] effects, short[] drops, String[] statusNames) {
     List<MonsterArrayEntrySnapshot> rows = new ArrayList<>();
     appendMonsterIntRows(rows, effects);
     appendMonsterShortRows(rows, "Resistance/Status A", shortArray(raw(monster, 21)), "resistA");
     appendMonsterShortRows(rows, "Resistance/Status B", shortArray(raw(monster, 22)), "resistB");
     appendMonsterByteRows(rows, byteArray(raw(monster, 23)));
-    appendMonsterShortRows(rows, "Drops", drops, "drops");
+    appendMonsterShortRows(rows, "Status Resistance", drops, "drops", statusNames);
     return rows;
   }
 
@@ -310,9 +314,9 @@ public final class GameData {
       rows.add(
           MonsterArrayEntrySnapshot.builder()
               .side("Effects")
-              .type("Effect")
+              .type(monsterEffectType(packed))
               .index(i)
-              .target("kind=%d".formatted((packed >>> 16) & 0xff))
+              .target(monsterEffectTarget(packed))
               .value(packed)
               .editable(true)
               .max(0x00ffffff)
@@ -323,14 +327,24 @@ public final class GameData {
 
   private static void appendMonsterShortRows(
       List<MonsterArrayEntrySnapshot> rows, String side, short[] values, String rawPrefix) {
+    appendMonsterShortRows(rows, side, values, rawPrefix, null);
+  }
+
+  private static void appendMonsterShortRows(
+      List<MonsterArrayEntrySnapshot> rows,
+      String side,
+      short[] values,
+      String rawPrefix,
+      String[] statusNames) {
     for (int i = 0; values != null && i < values.length; i++) {
       int packed = values[i] & 0xffff;
+      boolean statusResistance = rawPrefix.equals("drops");
       rows.add(
           MonsterArrayEntrySnapshot.builder()
               .side(side)
-              .type(rawPrefix.equals("drops") ? "Drop" : "Packed Short")
+              .type(statusResistance ? "Status Resistance" : "Packed Short")
               .index(i)
-              .target("id=%d".formatted((packed >>> 8) & 0xff))
+              .target(shortEntryTarget(packed, statusResistance, statusNames))
               .value(packed)
               .editable(true)
               .max(0xffff)
@@ -353,6 +367,39 @@ public final class GameData {
               .raw(RAW_STR_DIGIT_FORMAT.formatted("bytesD", i))
               .build());
     }
+  }
+
+  private static String monsterEffectType(int packed) {
+    return (packed & 0x8000) != 0 ? "Protection" : "Damage/Action";
+  }
+
+  private static String monsterEffectTarget(int packed) {
+    int kind = (packed >>> 16) & 0xff;
+    int value = packed & 0x7fff;
+    String kindName = monsterEffectKindName(kind);
+    String mode = (packed & 0x8000) != 0 ? "reduce" : "value";
+    return "%s %s=%d".formatted(kindName, mode, value);
+  }
+
+  private static String monsterEffectKindName(int kind) {
+    String element = DamageEffectKind.elementName(kind);
+    if (element != null) {
+      return element;
+    }
+    return kind == 0 ? "Physical" : "kind=%d".formatted(kind);
+  }
+
+  private static String shortEntryTarget(int packed, boolean statusResistance, String[] statusNames) {
+    int id = (packed >>> 8) & 0xff;
+    int value = packed & 0xff;
+    if (statusResistance) {
+      String name =
+          statusNames != null && id < statusNames.length
+              ? statusDisplayName(statusNames[id])
+              : "status id=%d".formatted(id);
+      return "%s block=%d".formatted(name, value);
+    }
+    return "id=%d value=%d".formatted(id, value);
   }
 
   private static void appendSkillRows(

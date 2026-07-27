@@ -103,11 +103,11 @@ Parser-derived bases: `MonsterOffsets.effectsOffset`, `resistAOffset`,
 
 | Array | Entry width | Value range | Confidence | Writable | Notes |
 |---|---:|---:|---|---|---|
-| `effects[index]` | 3 bytes | `0..0x00ffffff` | Confirmed | Yes | Existing entries only. Count is not edited. |
-| `resistA[index]` | 2 bytes | `0..65535` | Confirmed | Yes | Existing entries only; semantics still conservative. |
+| `effects[index]` | 3 bytes | `0..0x00ffffff` | Confirmed | Yes | Existing entries only. Count is not edited. High byte is effect/damage kind; bit `0x8000` marks protection/reduction; low 15 bits are the value. Ayrene has `0x038064` = Light protection `100`. |
+| `resistA[index]` | 2 bytes | `0..65535` | Probable | Yes | Existing entries only. Runtime helper looks up high-byte id and returns low-byte value for monster action weighting; exact gameplay label still conservative. |
 | `resistB[index]` | 2 bytes | `0..65535` | Confirmed | Yes | Existing entries only; semantics still conservative. |
 | `bytesD[index]` | 1 byte | `0..255` | Confirmed | Yes | Existing entries only. |
-| `drops[index]` | 2 bytes | `0..65535` | Confirmed | Yes | Existing entries only. |
+| `drops[index]` | 2 bytes | `0..65535` | Confirmed | Yes | Existing entries only. Runtime uses this public `b.c:[S` field as status resistance: high byte is status id; low byte is block chance. A value of `100` blocks that status because the check returns false for every `Random.nextInt(100)` roll. The editor keeps the raw key as `drops` until the patcher offset name is renamed. |
 
 Do not add/remove entries yet; counts and following offsets are variable-length.
 
