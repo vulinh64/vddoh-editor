@@ -60,7 +60,7 @@ public final class HighValueGraphicDisplayClassPatcher {
 
   public static State state(byte[] data) {
     try {
-      ClassModel model = ClassFile.of().parse(data);
+      ClassModel model = ClassPatchSupport.classModel(data);
       int original = originalSites(model);
       int patched = patchedSites(model);
       int expectedSites = expectedSites();
@@ -159,10 +159,10 @@ public final class HighValueGraphicDisplayClassPatcher {
     int matches = 0;
     for (MethodModel method : model.methods()) {
       if (!isGraphicBarMethod(method)) {
-        List<Instruction> instructions = instructions(method);
+        List<Instruction> instructions = ClassPatchSupport.instructions(method);
         matches += countInlineDigitSites(instructions, patched);
       } else {
-        List<Instruction> instructions = instructions(method);
+        List<Instruction> instructions = ClassPatchSupport.instructions(method);
         if (patched
             ? isPatchedGraphicDisplay(instructions)
             : isOriginalGraphicDisplay(instructions)) {
@@ -178,18 +178,6 @@ public final class HighValueGraphicDisplayClassPatcher {
         && GRAPHIC_BAR_DESCRIPTOR.equals(method.methodType().stringValue());
   }
 
-  private static List<Instruction> instructions(MethodModel method) {
-    List<Instruction> instructions = new ArrayList<>();
-    if (method.code().isEmpty()) {
-      return instructions;
-    }
-    for (CodeElement element : method.code().orElseThrow()) {
-      if (element instanceof Instruction instruction) {
-        instructions.add(instruction);
-      }
-    }
-    return instructions;
-  }
 
   private static boolean isOriginalGraphicDisplay(List<Instruction> instructions) {
     return !isPatchedGraphicDisplay(instructions)
@@ -296,14 +284,6 @@ public final class HighValueGraphicDisplayClassPatcher {
         && integer == value;
   }
 
-  private static boolean isSetClip(Instruction instruction) {
-    return instruction instanceof InvokeInstruction invoke
-        && invoke.opcode() == Opcode.INVOKEVIRTUAL
-        && GRAPHICS_CLASS_NAME.equals(invoke.owner().asInternalName())
-        && SET_CLIP_METHOD.equals(invoke.name().stringValue())
-        && SET_CLIP_DESCRIPTOR.equals(invoke.type().stringValue());
-  }
-
   private static boolean isHeroPartyField(Instruction instruction) {
     return instruction instanceof FieldInstruction field
         && field.opcode() == Opcode.GETSTATIC
@@ -374,13 +354,21 @@ public final class HighValueGraphicDisplayClassPatcher {
       this.counter = counter;
     }
 
+    private static boolean isSetClip(Instruction instruction) {
+      return instruction instanceof InvokeInstruction invoke
+          && invoke.opcode() == Opcode.INVOKEVIRTUAL
+          && GRAPHICS_CLASS_NAME.equals(invoke.owner().asInternalName())
+          && SET_CLIP_METHOD.equals(invoke.name().stringValue())
+          && SET_CLIP_DESCRIPTOR.equals(invoke.type().stringValue());
+    }
+
     @Override
     public void accept(CodeBuilder builder, CodeElement element) {
-      if (element instanceof Instruction instruction && digitClipJustSet) {
+      if (element instanceof Instruction && digitClipJustSet) {
         emitDigitDisplayClamp(builder);
         counter.increment();
         digitClipJustSet = false;
-      } else if (element instanceof Instruction instruction && inlineDigitValueJustMasked) {
+      } else if (element instanceof Instruction && inlineDigitValueJustMasked) {
         builder.sipush(DISPLAY_CAP);
         builder.invokestatic(MATH_CLASS, MATH_MIN_METHOD, MATH_MIN_TYPE);
         counter.increment();

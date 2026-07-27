@@ -49,23 +49,28 @@ public final class GameDatHeroPatcher {
       int nameLen = data[n] & 0x7f;
       n += 1 + nameLen;
       int statOffset = n;
-      n += 11;
-      n += 3;
-      n++;
-      n++;
-      int seedOffset = n;
-      n += 3;
-      n += 3;
-      for (int slot = 0; slot < 10; slot++) {
-        int equipped = equipmentFlag(data, seedOffset + 3, slot);
-        if (equipped > 0) {
-          n++;
-        }
-      }
+      int seedOffset = seedOffset(statOffset);
+      n = skipFixedHeroFields(data, statOffset);
       n = getN(data, n);
       offsets[heroId] = HeroOffsets.builder().statOffset(statOffset).seedOffset(seedOffset).build();
     }
     return offsets;
+  }
+
+  public static int skipFixedHeroFields(byte[] data, int statOffset) {
+    int seedOffset = seedOffset(statOffset);
+    int n = seedOffset + 6;
+    for (int slot = 0; slot < 10; slot++) {
+      int equipped = equipmentFlag(data, seedOffset + 3, slot);
+      if (equipped > 0) {
+        n++;
+      }
+    }
+    return n;
+  }
+
+  private static int seedOffset(int statOffset) {
+    return statOffset + 11 + 3 + 1 + 1;
   }
 
   public static int getN(byte[] data, int n) {

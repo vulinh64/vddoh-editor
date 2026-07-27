@@ -41,19 +41,21 @@ public final class EquipmentBonusClassPatcher {
 
   public static State state(byte[] data) {
     try {
-      ClassModel model = ClassFile.of().parse(data);
-      int original = originalSites(model);
-      int patched = patchedSites(model);
-      if (patched == EXPECTED_SITES && original == 0) {
+      ClassPatchSupport.SiteCounts sites =
+          ClassPatchSupport.siteCounts(
+              data,
+              EquipmentBonusClassPatcher::originalSites,
+              EquipmentBonusClassPatcher::patchedSites);
+      if (sites.isPatched(EXPECTED_SITES)) {
         return State.PATCHED;
       }
-      if (original == EXPECTED_SITES && patched == 0) {
+      if (sites.isOriginal(EXPECTED_SITES)) {
         return State.ORIGINAL;
       }
       log.info(
           "Equipment bonus class patch state unknown; originalSites={}, patchedSites={}",
-          original,
-          patched);
+          sites.original(),
+          sites.patched());
       return State.UNKNOWN;
     } catch (RuntimeException | LinkageError _) {
       return State.UNKNOWN;
@@ -130,7 +132,7 @@ public final class EquipmentBonusClassPatcher {
       if (!isHeroRecalcMethod(method)) {
         continue;
       }
-      List<Instruction> instructions = instructions(method);
+      List<Instruction> instructions = ClassPatchSupport.instructions(method);
       for (int i = 0; i < instructions.size(); i++) {
         if (patched ? isPatchedSite(instructions, i) : isOriginalSite(instructions, i)) {
           matches++;
@@ -145,18 +147,6 @@ public final class EquipmentBonusClassPatcher {
         && HERO_RECALC_DESCRIPTOR.equals(method.methodType().stringValue());
   }
 
-  private static List<Instruction> instructions(MethodModel method) {
-    List<Instruction> instructions = new ArrayList<>();
-    if (method.code().isEmpty()) {
-      return instructions;
-    }
-    for (CodeElement element : method.code().orElseThrow()) {
-      if (element instanceof Instruction instruction) {
-        instructions.add(instruction);
-      }
-    }
-    return instructions;
-  }
 
   private static boolean isOriginalSite(List<Instruction> instructions, int offset) {
     return offset + 1 < instructions.size()

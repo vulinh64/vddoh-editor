@@ -437,6 +437,13 @@ public final class FxCommandBar extends HBox {
     return checkbox;
   }
 
+  private static void markPatchApplied(CheckBox checkbox, boolean requested) {
+    if (requested) {
+      checkbox.setSelected(true);
+      checkbox.setDisable(true);
+    }
+  }
+
   private static int selectedOriginal(CheckBox item) {
     return item.isSelected() && !item.isDisable() ? 1 : 0;
   }
@@ -521,34 +528,13 @@ public final class FxCommandBar extends HBox {
           state.status("Wrote %s (%s)".formatted(result.outputJar(), result.summary()));
           build.disableProperty().unbind();
           build.setDisable(false);
-          if (resistanceOverflowPatchRequested) {
-            patchResistanceOverflow.setSelected(true);
-            patchResistanceOverflow.setDisable(true);
-          }
-          if (equipmentBonusPatchRequested) {
-            patchEquipmentBonus.setSelected(true);
-            patchEquipmentBonus.setDisable(true);
-          }
-          if (physicalDamageCapPatchRequested) {
-            patchPhysicalDamageCap.setSelected(true);
-            patchPhysicalDamageCap.setDisable(true);
-          }
-          if (highValueDisplayPatchRequested) {
-            patchHighValueDisplay.setSelected(true);
-            patchHighValueDisplay.setDisable(true);
-          }
-          if (highValueGraphicDisplayPatchRequested) {
-            patchHighValueGraphicDisplay.setSelected(true);
-            patchHighValueGraphicDisplay.setDisable(true);
-          }
-          if (victoryRewardPatchRequested) {
-            patchVictoryReward.setSelected(true);
-            patchVictoryReward.setDisable(true);
-          }
-          if (monsterRewardParserPatchRequested) {
-            patchMonsterRewardParser.setSelected(true);
-            patchMonsterRewardParser.setDisable(true);
-          }
+          markPatchApplied(patchResistanceOverflow, resistanceOverflowPatchRequested);
+          markPatchApplied(patchEquipmentBonus, equipmentBonusPatchRequested);
+          markPatchApplied(patchPhysicalDamageCap, physicalDamageCapPatchRequested);
+          markPatchApplied(patchHighValueDisplay, highValueDisplayPatchRequested);
+          markPatchApplied(patchHighValueGraphicDisplay, highValueGraphicDisplayPatchRequested);
+          markPatchApplied(patchVictoryReward, victoryRewardPatchRequested);
+          markPatchApplied(patchMonsterRewardParser, monsterRewardParserPatchRequested);
           updatePatchJarButton();
         });
     task.setOnFailed(

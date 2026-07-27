@@ -1,14 +1,11 @@
 package com.vddoh.editor.service;
 
 import com.vddoh.editor.data.PatchSummary;
-import java.lang.classfile.ClassFile;
-import java.lang.classfile.CodeElement;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
@@ -109,8 +106,8 @@ public final class VictoryRewardClassPatcher {
   private static int semanticMatches(byte[] data, String rewardFieldName) {
     try {
       int matches = 0;
-      for (MethodModel method : ClassFile.of().parse(data).methods()) {
-        List<Instruction> instructions = instructions(method);
+      for (MethodModel method : ClassPatchSupport.classModel(data).methods()) {
+        List<Instruction> instructions = ClassPatchSupport.instructions(method);
         for (int i = 0; i + 5 < instructions.size(); i++) {
           if (isRewardRemainderAward(instructions, i, rewardFieldName)) {
             matches++;
@@ -123,18 +120,6 @@ public final class VictoryRewardClassPatcher {
     }
   }
 
-  private static List<Instruction> instructions(MethodModel method) {
-    List<Instruction> instructions = new ArrayList<>();
-    if (method.code().isEmpty()) {
-      return instructions;
-    }
-    for (CodeElement element : method.code().orElseThrow()) {
-      if (element instanceof Instruction instruction) {
-        instructions.add(instruction);
-      }
-    }
-    return instructions;
-  }
 
   private static boolean isRewardRemainderAward(
       List<Instruction> instructions, int offset, String rewardFieldName) {

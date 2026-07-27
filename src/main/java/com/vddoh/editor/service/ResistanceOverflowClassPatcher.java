@@ -1,13 +1,10 @@
 package com.vddoh.editor.service;
 
 import com.vddoh.editor.data.*;
-import java.lang.classfile.ClassFile;
-import java.lang.classfile.CodeElement;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.instruction.FieldInstruction;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
@@ -126,12 +123,12 @@ public final class ResistanceOverflowClassPatcher {
   private static int semanticOriginalMatches(byte[] data) {
     try {
       int matches = 0;
-      for (MethodModel method : ClassFile.of().parse(data).methods()) {
+      for (MethodModel method : ClassPatchSupport.classModel(data).methods()) {
         if (!"b".equals(method.methodName().stringValue())
             || !"()V".equals(method.methodType().stringValue())) {
           continue;
         }
-        List<Instruction> instructions = instructions(method);
+        List<Instruction> instructions = ClassPatchSupport.instructions(method);
         for (int i = 0; i + 10 < instructions.size(); i++) {
           if (isOriginalClamp(instructions, i)) {
             matches++;
@@ -145,18 +142,6 @@ public final class ResistanceOverflowClassPatcher {
     }
   }
 
-  private static List<Instruction> instructions(MethodModel method) {
-    List<Instruction> instructions = new ArrayList<>();
-    if (method.code().isEmpty()) {
-      return instructions;
-    }
-    for (CodeElement element : method.code().orElseThrow()) {
-      if (element instanceof Instruction instruction) {
-        instructions.add(instruction);
-      }
-    }
-    return instructions;
-  }
 
   private static boolean isOriginalClamp(List<Instruction> instructions, int i) {
     if (!hasOpcodes(instructions, i)) {

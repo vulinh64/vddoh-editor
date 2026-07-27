@@ -3,6 +3,7 @@ package com.vddoh.editor.view.skills;
 import com.vddoh.editor.data.ChangeColumnName;
 import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.view.FxEditorState;
+import com.vddoh.editor.view.ui.FxSpinnerSupport;
 import java.util.List;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -15,7 +16,6 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TitledPane;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -117,7 +117,7 @@ public final class FxSkillDetailPane extends ScrollPane {
     spinner.setEditable(true);
     spinner.setValueFactory(
         new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 255, property.get()));
-    commitOnEnter(spinner);
+    FxSpinnerSupport.commitOnEnter(spinner);
     boolean[] updatingFromProperty = {false};
     spinner
         .getValueFactory()
@@ -130,15 +130,7 @@ public final class FxSkillDetailPane extends ScrollPane {
               property.set(value);
               recordSkillChange(viewModel, oldValue, value);
             });
-    property.addListener(
-        (_, _, value) -> {
-          if (spinner.getValueFactory().getValue().equals(value.intValue())) {
-            return;
-          }
-          updatingFromProperty[0] = true;
-          spinner.getValueFactory().setValue(value.intValue());
-          updatingFromProperty[0] = false;
-        });
+    FxSpinnerSupport.syncFromProperty(spinner, property, updatingFromProperty);
     Label note = new Label("safe edit");
     note.getStyleClass().add("field-note");
     grid.add(name, 0, 3);
@@ -195,7 +187,7 @@ public final class FxSkillDetailPane extends ScrollPane {
     spinner.setValueFactory(
         new SpinnerValueFactory.IntegerSpinnerValueFactory(
             0, effect.maxValue(), effect.valueProperty().get()));
-    commitOnEnter(spinner);
+    FxSpinnerSupport.commitOnEnter(spinner);
     boolean[] updatingFromProperty = {false};
     spinner
         .getValueFactory()
@@ -226,21 +218,6 @@ public final class FxSkillDetailPane extends ScrollPane {
     Label label = new Label(String.valueOf(value));
     label.getStyleClass().add("field-value");
     return label;
-  }
-
-  private static void commitOnEnter(Spinner<Integer> spinner) {
-    spinner
-        .getEditor()
-        .setOnKeyPressed(
-            event -> {
-              if (event.getCode() != KeyCode.ENTER) {
-                return;
-              }
-              SpinnerValueFactory<Integer> valueFactory = spinner.getValueFactory();
-              valueFactory.setValue(
-                  valueFactory.getConverter().fromString(spinner.getEditor().getText()));
-              event.consume();
-            });
   }
 
   private void recordSkillChange(FxSkillViewModel viewModel, Object oldValue, Object newValue) {

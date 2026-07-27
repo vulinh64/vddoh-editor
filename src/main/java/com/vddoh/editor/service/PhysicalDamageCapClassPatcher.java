@@ -45,7 +45,7 @@ public final class PhysicalDamageCapClassPatcher {
 
   public static State state(byte[] data) {
     try {
-      ClassModel model = ClassFile.of().parse(data);
+      ClassModel model = ClassPatchSupport.classModel(data);
       int original = originalSites(model);
       int patched = patchedSites(model);
       int shortCasts = physicalResultShortCastSites(model);
@@ -147,7 +147,7 @@ public final class PhysicalDamageCapClassPatcher {
       if (!isHeroActionMethod(method)) {
         continue;
       }
-      List<Instruction> instructions = instructions(method);
+      List<Instruction> instructions = ClassPatchSupport.instructions(method);
       for (int i = 0; i + 1 < instructions.size(); i++) {
         if (instructions.get(i).opcode() == Opcode.I2S
             && isHeroResultField(instructions.get(i + 1), Opcode.PUTFIELD)) {
@@ -164,7 +164,7 @@ public final class PhysicalDamageCapClassPatcher {
       if (!isHeroActionMethod(method)) {
         continue;
       }
-      List<Instruction> instructions = instructions(method);
+      List<Instruction> instructions = ClassPatchSupport.instructions(method);
       for (int i = 0; i < instructions.size(); i++) {
         if (patched ? isPatchedSite(instructions, i) : isOriginalSite(instructions, i)) {
           matches++;
@@ -179,18 +179,6 @@ public final class PhysicalDamageCapClassPatcher {
         && HERO_ACTION_DESCRIPTOR.equals(method.methodType().stringValue());
   }
 
-  private static List<Instruction> instructions(MethodModel method) {
-    List<Instruction> instructions = new ArrayList<>();
-    if (method.code().isEmpty()) {
-      return instructions;
-    }
-    for (CodeElement element : method.code().orElseThrow()) {
-      if (element instanceof Instruction instruction) {
-        instructions.add(instruction);
-      }
-    }
-    return instructions;
-  }
 
   private static boolean isOriginalSite(List<Instruction> instructions, int offset) {
     return isApplyPhysicalDamageCall(instructions, offset)

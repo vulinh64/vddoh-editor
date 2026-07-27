@@ -11,7 +11,6 @@ import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.classfile.instruction.LoadInstruction;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -35,19 +34,21 @@ public final class HighValueDisplayClassPatcher {
 
   public static State state(byte[] data) {
     try {
-      ClassModel model = ClassFile.of().parse(data);
-      int original = originalSites(model);
-      int patched = patchedSites(model);
-      if (patched == EXPECTED_SITES && original == 0) {
+      ClassPatchSupport.SiteCounts sites =
+          ClassPatchSupport.siteCounts(
+              data,
+              HighValueDisplayClassPatcher::originalSites,
+              HighValueDisplayClassPatcher::patchedSites);
+      if (sites.isPatched(EXPECTED_SITES)) {
         return State.PATCHED;
       }
-      if (original == EXPECTED_SITES && patched == 0) {
+      if (sites.isOriginal(EXPECTED_SITES)) {
         return State.ORIGINAL;
       }
       log.info(
           "High-value display class patch state unknown; originalSites={}, patchedSites={}",
-          original,
-          patched);
+          sites.original(),
+          sites.patched());
       return State.UNKNOWN;
     } catch (RuntimeException | LinkageError _) {
       return State.UNKNOWN;
@@ -125,7 +126,7 @@ public final class HighValueDisplayClassPatcher {
       if (!isFormatMethod(method)) {
         continue;
       }
-      List<Instruction> instructions = instructions(method);
+      List<Instruction> instructions = ClassPatchSupport.instructions(method);
       if (patched ? isPatchedFormatter(instructions) : isOriginalFormatter(instructions)) {
         matches++;
       }
@@ -138,18 +139,6 @@ public final class HighValueDisplayClassPatcher {
         && FORMAT_DESCRIPTOR.equals(method.methodType().stringValue());
   }
 
-  private static List<Instruction> instructions(MethodModel method) {
-    List<Instruction> instructions = new ArrayList<>();
-    if (method.code().isEmpty()) {
-      return instructions;
-    }
-    for (CodeElement element : method.code().orElseThrow()) {
-      if (element instanceof Instruction instruction) {
-        instructions.add(instruction);
-      }
-    }
-    return instructions;
-  }
 
   private static boolean isOriginalFormatter(List<Instruction> instructions) {
     return instructions.size() >= 5

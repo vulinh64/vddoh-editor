@@ -7,7 +7,7 @@ public final class VddohDataEditor {
 
   private VddohDataEditor() {}
 
-  public static void main(String[] args) {
+  static void main(String[] args) {
     Application.launch(FxEditorApplication.class, args);
   }
 }

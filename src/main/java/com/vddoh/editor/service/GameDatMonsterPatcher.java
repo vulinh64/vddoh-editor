@@ -77,15 +77,9 @@ public final class GameDatMonsterPatcher {
   }
 
   private static ParsedMonsterArrays parseArrays(byte[] data, int n) {
-    n += 4;
-    int flags = u8(data[n++]);
-    int len = u8(data[n++]);
-    for (int j = 0; j < len; j++) {
-      n += 2;
-      if ((data[n - 1] & 1) != 0) {
-        n++;
-      }
-    }
+    MonsterArrayCursor cursor = skipActionList(data, n);
+    int flags = cursor.flags();
+    n = cursor.nextOffset();
     int effectsOffset = n + 1;
     int effectsCount = u8(data[n++]);
     n += effectsCount * 3;
@@ -235,16 +229,10 @@ public final class GameDatMonsterPatcher {
   }
 
   public static int getN(byte[] data, int n) {
-    n += 4;
-    int flags = u8(data[n++]);
+    MonsterArrayCursor cursor = skipActionList(data, n);
+    int flags = cursor.flags();
+    n = cursor.nextOffset();
     int len = u8(data[n++]);
-    for (int j = 0; j < len; j++) {
-      n += 2;
-      if ((data[n - 1] & 1) != 0) {
-        n++;
-      }
-    }
-    len = u8(data[n++]);
     n += len * 3;
     if ((flags & 8) != 0) {
       len = u8(data[n++]);
@@ -263,6 +251,19 @@ public final class GameDatMonsterPatcher {
     return n;
   }
 
+  private static MonsterArrayCursor skipActionList(byte[] data, int n) {
+    n += 4;
+    int flags = u8(data[n++]);
+    int len = u8(data[n++]);
+    for (int j = 0; j < len; j++) {
+      n += 2;
+      if ((data[n - 1] & 1) != 0) {
+        n++;
+      }
+    }
+    return new MonsterArrayCursor(flags, n);
+  }
+
   @Builder
   private record ParsedMonsterArrays(
       int effectsOffset,
@@ -276,4 +277,6 @@ public final class GameDatMonsterPatcher {
       int dropsOffset,
       int dropsCount,
       int nextOffset) {}
+
+  private record MonsterArrayCursor(int flags, int nextOffset) {}
 }

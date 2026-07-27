@@ -185,19 +185,7 @@ public final class EditorSupport {
     for (int heroId = 0; heroId < count; heroId++) {
       int nameLen = data[n] & 0x7f;
       n += 1 + nameLen;
-      n += 11;
-      n += 3;
-      n++;
-      n++;
-      int seedOffset = n;
-      n += 3;
-      n += 3;
-      for (int slot = 0; slot < 10; slot++) {
-        int equipped = equipmentFlag(data, seedOffset + 3, slot);
-        if (equipped > 0) {
-          n++;
-        }
-      }
+      n = GameDatHeroPatcher.skipFixedHeroFields(data, n);
       n = GameDatHeroPatcher.getN(data, n);
     }
     return n;
@@ -945,7 +933,7 @@ public final class EditorSupport {
 
   @SneakyThrows
   public static String decodeBytes(byte[] encoded, Method decode) {
-    return encoded == null ? StringUtils.EMPTY : (String) decode.invoke(null, encoded);
+    return encoded == null ? StringUtils.EMPTY : (String) decode.invoke(null, (Object) encoded);
   }
 
   public static Object[] objectArray(Object value) {

@@ -5,6 +5,7 @@ import com.vddoh.editor.data.EditorTabName;
 import com.vddoh.editor.data.ItemSnapshot;
 import com.vddoh.editor.view.FxEditorState;
 import com.vddoh.editor.view.FxNavigation;
+import com.vddoh.editor.view.ui.FxSpinnerSupport;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -29,7 +30,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -148,6 +148,11 @@ public final class FxItemDetailPane extends ScrollPane {
         new Label(
             "%s, skill id %d, level/variant %d"
                 .formatted(effect.target(), effect.linkedSkillId(), effect.skillLevel()));
+    box.getChildren().addAll(summary, linkedSkillAction(viewModel, effect));
+    return box;
+  }
+
+  private Button linkedSkillAction(FxItemViewModel viewModel, FxItemEffectViewModel effect) {
     Button action = new Button("Send To Skills Search");
     action.setOnAction(
         _ -> {
@@ -162,8 +167,7 @@ public final class FxItemDetailPane extends ScrollPane {
                       effect.skillLevel(),
                       viewModel.id()));
         });
-    box.getChildren().addAll(summary, action);
-    return box;
+    return action;
   }
 
   private TableView<FxItemEffectViewModel> effectsTable(FxItemViewModel viewModel) {
@@ -288,7 +292,7 @@ public final class FxItemDetailPane extends ScrollPane {
     spinner.setEditable(true);
     spinner.setValueFactory(
         new SpinnerValueFactory.IntegerSpinnerValueFactory(0, max, property.get()));
-    commitOnEnter(spinner);
+    FxSpinnerSupport.commitOnEnter(spinner);
     boolean[] updatingFromProperty = {false};
     spinner
         .getValueFactory()
@@ -307,15 +311,7 @@ public final class FxItemDetailPane extends ScrollPane {
                   oldValue,
                   value);
             });
-    property.addListener(
-        (_, _, value) -> {
-          if (spinner.getValueFactory().getValue().equals(value.intValue())) {
-            return;
-          }
-          updatingFromProperty[0] = true;
-          spinner.getValueFactory().setValue(value.intValue());
-          updatingFromProperty[0] = false;
-        });
+    FxSpinnerSupport.syncFromProperty(spinner, property, updatingFromProperty);
     Label note = new Label("safe edit");
     note.getStyleClass().add("field-note");
     grid.add(name, 0, row);
@@ -381,21 +377,6 @@ public final class FxItemDetailPane extends ScrollPane {
         super.startEdit();
       }
     };
-  }
-
-  private static void commitOnEnter(Spinner<Integer> spinner) {
-    spinner
-        .getEditor()
-        .setOnKeyPressed(
-            event -> {
-              if (event.getCode() != KeyCode.ENTER) {
-                return;
-              }
-              SpinnerValueFactory<Integer> valueFactory = spinner.getValueFactory();
-              valueFactory.setValue(
-                  valueFactory.getConverter().fromString(spinner.getEditor().getText()));
-              event.consume();
-            });
   }
 
   private static ObservableValue<String> stringValue(String value) {

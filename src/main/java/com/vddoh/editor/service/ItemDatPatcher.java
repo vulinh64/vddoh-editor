@@ -179,11 +179,10 @@ public final class ItemDatPatcher {
 
   private static int skipCategoryTail(byte[] data, int n, int category, ItemOffsets offsets) {
     return switch (category) {
-      case 1, 2, 4 -> n + 1;
+      case 1, 2, 4, 9, 10 -> n + 1;
       case 3 -> skipWeaponTail(data, n);
       case 5 -> parseConsumableTail(data, n, offsets);
       case 8 -> skipTextTail(data, n);
-      case 9, 10 -> n + 1;
       case 12 -> skipQuestTail(data, n);
       default -> n;
     };
