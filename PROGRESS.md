@@ -19,7 +19,7 @@ This project contains the current JavaFX data editor and reverse-engineering not
 - [x] Added a separate JavaFX equipment-bonus aggregation patch control. It detects the vanilla `g.b()V` equipment `byte_d` overwrite shape, patches it with JDK 25 Class-File API so the bonus accumulates, and detects already-patched inputs independently from the resistance-overflow patch.
 - [x] Added a separate JavaFX victory EXP reward patch control. It detects the vanilla `j.class` victory-result remainder bug, patches the final small EXP award branch to use pending EXP instead of pending Filar, and detects already-patched inputs independently from the `g.class` patches.
 - [x] Added a separate JavaFX monster EXP/Filar parser patch control. The monster reward header offsets are confirmed correct, but vanilla `j.f(int)` parses the EXP high byte and Filar low byte as signed; the patch masks both bytes with `0xff` before combining the packed 12-bit values.
-- [x] Added a separate JavaFX physical damage cap patch control. It detects the vanilla `g.class` hero-to-enemy physical damage path that feeds `v & 1023` into enemy damage application, then caps final physical damage to `999` before the low 10-bit packed result can wrap.
+- [ ] Replace the JavaFX physical damage cap control. The existing `g.class` implementation targets the wrong path. The confirmed outgoing hero basic-attack path is `b.a(int heroIndex)`, which combines weapon/rune components and critical damage in `b.i` before `b.i & 1023`; the direct distribution JAR caps the unflagged result after component/physical arithmetic and after the critical addition, before its bit-16 critical marker is set.
 - [x] Added a separate JavaFX high-value display patch control. It patches the shared `j.class` 3-digit text formatter so values over `999` display as `999+` instead of wrapping to low digits, without changing the underlying HP/resource/stat values.
 - [x] Added a separate JavaFX high-value graphic display patch control. It patches the `j.class` HP/resource bar sprite-digit helper so party overview graphic values above `999` saturate to `999` instead of wrapping to low digits, without changing the underlying packed values or bar math.
 - [x] Updated `build-with-jdk.cmd` to delegate to the Maven wrapper so dependency resolution, annotation processing, resources, Java ME API unpacking, and shading stay in one build path.
@@ -110,14 +110,12 @@ The monster EXP/Filar parser patch is another `j.class` patcher. It uses JDK
 low byte. This preserves the confirmed `game.dat` offsets while fixing rewards
 whose relevant byte is `>= 128`.
 
-The physical damage cap patch is a separate `g.class` patcher. It targets the
-hero action method `g.a(f, boolean, b, boolean, boolean)` and injects a final
-cap immediately before the enemy-side `b.b(int, int)` damage call. The patch
-preserves existing battle-result flags, removes known hero-to-enemy physical
-result short-cast truncation before display packing, and clamps final physical
-damage to `999` before the vanilla `v & 1023` handoff. Open follow-up: in-game
-testing still showed `CRITICAL 005`, so displayed popup damage is not yet
-confirmed to faithfully mirror the final capped damage.
+The existing physical damage cap patcher remains a legacy `g.class` patcher and
+must not be used for outgoing hero basic attacks. The confirmed direct-JAR fix
+targets `b.a(int)`: it caps `b.i` to `999` after all weapon/rune and physical
+components, and once more after the critical addition before bit 16 is set as
+the critical marker. Both enemy-damage application and popup rendering then
+receive `b.i & 1023` in the guaranteed range `0..999`.
 
 The high-value display patch is a separate `j.class` patcher. It targets the
 shared `j.a(int value, int widthBase)` text formatter and changes only the

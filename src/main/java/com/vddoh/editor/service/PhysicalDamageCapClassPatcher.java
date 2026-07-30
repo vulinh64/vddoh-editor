@@ -127,10 +127,14 @@ public final class PhysicalDamageCapClassPatcher {
   }
 
   static int capPhysicalDamageResult(int result) {
-    if ((result & RAW_DAMAGE_MASK) > DAMAGE_CAP) {
-      return (result & FLAG_MASK) | DAMAGE_CAP;
+    int cappedResult = result;
+    if ((cappedResult & RAW_DAMAGE_MASK) > DAMAGE_MASK) {
+      cappedResult = (cappedResult & FLAG_MASK) | DAMAGE_MASK;
     }
-    return result;
+    if ((cappedResult & RAW_DAMAGE_MASK) > DAMAGE_CAP) {
+      cappedResult = (cappedResult & FLAG_MASK) | DAMAGE_CAP;
+    }
+    return cappedResult;
   }
 
   private static int originalSites(ClassModel model) {
@@ -221,18 +225,25 @@ public final class PhysicalDamageCapClassPatcher {
   }
 
   private static boolean hasCapImmediatelyBefore(List<Instruction> instructions, int offset) {
-    return offset >= 14
-        && isHeroResultRawDamageRead(instructions, offset - 14)
-        && isPush(instructions.get(offset - 10), DAMAGE_CAP)
-        && instructions.get(offset - 9).opcode() == Opcode.IF_ICMPLE
-        && isLoadThis(instructions.get(offset - 8))
-        && isLoadThis(instructions.get(offset - 7))
-        && isHeroResultField(instructions.get(offset - 6), Opcode.GETFIELD)
-        && isPush(instructions.get(offset - 5), FLAG_MASK)
-        && instructions.get(offset - 4).opcode() == Opcode.IAND
-        && isPush(instructions.get(offset - 3), DAMAGE_CAP)
-        && instructions.get(offset - 2).opcode() == Opcode.IOR
-        && isHeroResultField(instructions.get(offset - 1), Opcode.PUTFIELD);
+    if (offset < 10
+        || !isLoadThis(instructions.get(offset - 8))
+        || !isLoadThis(instructions.get(offset - 7))
+        || !isHeroResultField(instructions.get(offset - 6), Opcode.GETFIELD)
+        || !isPush(instructions.get(offset - 5), FLAG_MASK)
+        || instructions.get(offset - 4).opcode() != Opcode.IAND
+        || !isPush(instructions.get(offset - 3), DAMAGE_CAP)
+        || instructions.get(offset - 2).opcode() != Opcode.IOR
+        || !isHeroResultField(instructions.get(offset - 1), Opcode.PUTFIELD)) {
+      return false;
+    }
+
+    boolean rawDamageRead = false;
+    boolean packedMaximumClamp = false;
+    for (int index = Math.max(0, offset - 42); index < offset - 8; index++) {
+      rawDamageRead |= isHeroResultRawDamageRead(instructions, index);
+      packedMaximumClamp |= isPush(instructions.get(index), DAMAGE_MASK);
+    }
+    return rawDamageRead && packedMaximumClamp;
   }
 
   private static boolean isHeroResultRawDamageRead(List<Instruction> instructions, int offset) {
@@ -375,7 +386,8 @@ public final class PhysicalDamageCapClassPatcher {
     }
 
     private static void emitCap(CodeBuilder builder) {
-      Label done = builder.newLabel();
+      Label withinDisplayRange = builder.newLabel();
+      Label atOrBelowPackedMaximum = builder.newLabel();
       builder
           .aload(0)
           .getfield(
@@ -385,7 +397,31 @@ public final class PhysicalDamageCapClassPatcher {
           .ldc(RAW_DAMAGE_MASK)
           .iand()
           .sipush(DAMAGE_CAP)
-          .if_icmple(done)
+          .if_icmple(withinDisplayRange)
+          .aload(0)
+          .getfield(
+              java.lang.constant.ClassDesc.of(HERO_CLASS_NAME),
+              HERO_RESULT_FIELD,
+              java.lang.constant.ConstantDescs.CD_int)
+          .ldc(RAW_DAMAGE_MASK)
+          .iand()
+          .sipush(DAMAGE_MASK)
+          .if_icmple(atOrBelowPackedMaximum)
+          .aload(0)
+          .aload(0)
+          .getfield(
+              java.lang.constant.ClassDesc.of(HERO_CLASS_NAME),
+              HERO_RESULT_FIELD,
+              java.lang.constant.ConstantDescs.CD_int)
+          .ldc(FLAG_MASK)
+          .iand()
+          .sipush(DAMAGE_MASK)
+          .ior()
+          .putfield(
+              java.lang.constant.ClassDesc.of(HERO_CLASS_NAME),
+              HERO_RESULT_FIELD,
+              java.lang.constant.ConstantDescs.CD_int)
+          .labelBinding(atOrBelowPackedMaximum)
           .aload(0)
           .aload(0)
           .getfield(
@@ -400,7 +436,7 @@ public final class PhysicalDamageCapClassPatcher {
               java.lang.constant.ClassDesc.of(HERO_CLASS_NAME),
               HERO_RESULT_FIELD,
               java.lang.constant.ConstantDescs.CD_int)
-          .labelBinding(done);
+          .labelBinding(withinDisplayRange);
     }
 
     private void remember(Instruction instruction) {

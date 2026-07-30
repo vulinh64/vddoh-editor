@@ -198,57 +198,37 @@ damage + damage * 90 / 100
 
 or roughly `190%` of normal damage after integer truncation.
 
-### Physical Damage Wrap Bug
+### Hero Physical Damage Wrap Bug
 
-Hero-to-enemy physical damage is packed into hero result field `g.v`. The low
-10 bits hold the numeric damage shown by the battle popup, while higher bits
-hold flags such as critical, miss, and evade. The vanilla hero action method
-`g.a(f, boolean, b, boolean, boolean)` applies enemy damage through a masked
-value:
+Confirmed outgoing hero basic attacks resolve in `b.a(int heroIndex)`. The
+method adds weapon/rune components, applies `g.d` (hero Attack) against the
+battle unit's physical defense, then applies the hero critical bonus. Its packed
+result field is `b.i`; both the damage application and popup rendering read
+`b.i & 1023`.
+
+The low-10-bit operation is a wrap, not a clamp. The required invariant is:
 
 ```text
-enemyDamage = g.v & 1023
+final hero physical/rune/critical damage > 999 -> 999
 ```
 
-That is a wrap, not a clamp. High physical/critical damage can therefore become
-tiny real damage:
+The critical marker occupies bit 16 of `b.i`. A cap placed after that marker
+cannot reliably recover an extreme unflagged magnitude, because the marker
+shares the same integer. The direct distribution-JAR patch therefore caps the
+unflagged arithmetic at two points: after all weapon/rune plus physical-defense
+components, and after the critical addition but before setting the critical
+marker:
 
 ```text
-1039 & 1023 = 15
-1040 & 1023 = 16
-```
-
-This explains the modded level-50 Romus test: a base crit damage value around
-`70%` plus Deadly Might bonus can push physical critical damage over `1000`,
-but vanilla masks the result before applying it to the enemy.
-
-The editor now has a `Patch physical damage cap` option. It patches `g.class`
-to preserve the existing packed result and flag layout. The patch removes the
-hero-to-enemy physical result's short casts before display packing, then clamps
-the physical damage value to `999` immediately before the enemy-side damage
-call:
-
-```text
-if ((g.v & 65535) > 999) {
-  g.v = (g.v & ~65535) | 999;
+if (b.i > 999) {
+  b.i = 999;
 }
 ```
 
-This was chosen instead of removing the mask because the high bits are already
-used for battle-result flags and UI behavior.
-
-The short-cast removal matters for very high critical hits. A popup such as
-`CRITICAL 077` means the result had already wrapped before the final damage
-handoff; a late cap cannot recover the original value after that cast.
-
-Open follow-up: the desired invariant is that final applied hero physical
-damage is capped at `999` and the popup displays that same capped value, e.g.
-high critical hits should show `CRITICAL 999`. A later in-game check still
-showed `CRITICAL 005`, so the popup likely reads a wrapped/intermediate value
-or a later packed display payload instead of the final capped damage value.
-Next investigation should trace the popup source after `g.a(f, boolean, b,
-boolean, boolean)`, especially `g.v` writes/reads around the final
-`b.b(int, int)` damage call and the renderer path.
+This makes both the applied damage and popup value at most `999`, while the
+normal following `b.i |= 65536` still records a critical hit. The existing
+editor `g.class` physical-cap implementation targets the wrong path and must be
+replaced with a guarded `b.class` implementation before it is offered in the UI.
 
 Follow-up HP/resource check:
 

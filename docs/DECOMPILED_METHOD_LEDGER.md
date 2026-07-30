@@ -342,17 +342,20 @@ Confirmed battle path fragments:
 
 ```text
 skill/item data damage value can be 0..65535
-hero battle result stores numeric display/result in v low 10 bits
-damage/result display uses v & 1023, not a clamp
-hero-to-enemy physical damage uses v & 1023 before applying enemy HP damage
-enemy-to-hero physical damage uses v & 1023 before applying hero Health damage
+hero result field g.v is used by hero-side action/result paths
+battle-unit result field b.i is used by outgoing hero basic attacks
+damage/result display uses a low-10-bit mask, not a clamp
+outgoing hero basic damage uses b.i & 1023 before application and popup render
+enemy-to-hero physical damage uses g.v & 1023 before applying hero Health damage
 HP/resource storage itself is masked as 16-bit current/max fields
 ```
 
 ### Physical Damage Wrap Bug
 
-`g.a(f, boolean, b, boolean, boolean)` can build physical/critical damage above
-`1023`, but the enemy-side damage call receives only `v & 1023`. This is a real
+`b.a(int heroIndex)` is the confirmed outgoing hero basic-attack resolver. It
+adds weapon/rune components, applies `g.d` (hero Attack) against battle-unit
+defense, applies the hero critical bonus, and stores the final packed result in
+`b.i`. Both the enemy-damage handoff and popup use `b.i & 1023`. This is a real
 gameplay bug, not only display truncation. For example:
 
 ```text
@@ -360,31 +363,24 @@ gameplay bug, not only display truncation. For example:
 1040 & 1023 = 16
 ```
 
-This matches the observed modded Romus case where high critical damage around
-`1K+` was displayed and applied as roughly `15..16`.
-
-`PhysicalDamageCapClassPatcher` keeps the existing packed result/flag layout and
-removes the hero-to-enemy physical result's short casts before display packing.
-It then injects a final cap immediately before the enemy-side `b.b(int, int)`
-call:
+Bit 16 of `b.i` is set after the critical arithmetic as its critical marker.
+The direct distribution-JAR fix consequently caps the unflagged value once
+after component/physical arithmetic and again after the critical addition,
+before that marker is set:
 
 ```text
-if ((v & 65535) > 999) {
-  v = (v & ~65535) | 999;
+if (b.i > 999) {
+  b.i = 999;
 }
 ```
 
-This preserves flags such as critical/miss/evasion and avoids using the
-reserved high bits as extra damage storage.
-Without removing the earlier `i2s` casts, very high critical hits can wrap to
-values like `77` before the final cap sees them.
+The first cap prevents an extreme pre-critical sum from narrowing incorrectly;
+the second guarantees that a high critical cannot reach the later
+`b.i & 1023` wrap.
 
-Open follow-up: final applied hero physical damage and displayed popup damage
-should both cap at `999`, with the critical marker preserved. In-game testing
-still showed `CRITICAL 005`, so the display path likely reads a wrapped or
-intermediate value rather than the final capped damage. Trace `g.v` writes and
-reads after `g.a(f, boolean, b, boolean, boolean)`, especially the renderer
-that draws the popup digits.
+The old `PhysicalDamageCapClassPatcher` targets `g.class` and is disproven for
+this purpose. It must be replaced with a guarded `b.class` patcher before the
+editor control is used again.
 
 The same low-10-bit handoff exists on the opposite physical direction:
 `g.a(b)` builds incoming battle-unit damage in `v`, applies the critical bonus,
