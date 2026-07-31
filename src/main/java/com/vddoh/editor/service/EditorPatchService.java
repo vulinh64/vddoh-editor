@@ -275,6 +275,7 @@ public final class EditorPatchService {
         .icon(edit.icon())
         .hpRestore(edit.hpRestore())
         .resourceRestore(edit.resourceRestore())
+        .runeSlots(edit.runeSlots())
         .effectEdits(edit.effectEdits())
         .build();
   }

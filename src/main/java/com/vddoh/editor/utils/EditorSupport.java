@@ -478,14 +478,14 @@ public final class EditorSupport {
     }
     int weaponData = u8(raw(item, 18));
     int weaponReach = weaponData & 0x0f;
-    int weaponMode = (weaponData >> 5) & 7;
+    int runeSlots = (weaponData >> 5) & 7;
     rows.add(
         ItemEffectRow.of(
             WEAPON_SIDE,
             "Reach",
             "Tiles",
             String.valueOf(weaponReach),
-            "mode=" + weaponMode,
+            "rune slots=" + runeSlots,
             "byte_f"));
     rows.add(
         ItemEffectRow.of(
@@ -537,14 +537,13 @@ public final class EditorSupport {
       int packed = values[i];
       int kind = (packed >> 16) & 0xff;
       int value = packed & 0xffff;
-      rows.add(
-          ItemEffectRow.of(
-              side,
-              ItemEffectLabel.intEffectType(category, kind, effectKind(kind)),
-              ItemEffectLabel.intEffectTarget(category, kind, statName(kind)),
-              String.valueOf(value),
-              StringUtils.EMPTY,
-              "%s[%d]=%d".formatted(rawName, i, packed)));
+      String type = ItemEffectLabel.intEffectType(category, kind, effectKind(kind));
+      String target = ItemEffectLabel.intEffectTarget(category, kind, statName(kind));
+      if (category == 3 && "int_arr_a".equals(rawName)) {
+        rows.add(ItemEffectRow.weaponDamage(side, type, target, String.valueOf(value), "%s[%d]".formatted(rawName, i), kind));
+      } else {
+        rows.add(ItemEffectRow.of(side, type, target, String.valueOf(value), StringUtils.EMPTY, "%s[%d]".formatted(rawName, i)));
+      }
     }
   }
 
@@ -611,9 +610,9 @@ public final class EditorSupport {
     };
   }
 
-  public static String itemNotes(int category, int subtype, int reach, int mode) {
+  public static String itemNotes(int category, int subtype, int reach, int runeSlots) {
     if (category == 3) {
-      return "weapon: reach=" + reach + ", mode=" + mode;
+      return "weapon: reach=" + reach + ", rune slots=" + runeSlots;
     }
     if (category == 7) {
       return "rune/modifier: weapon effect + armor effect";

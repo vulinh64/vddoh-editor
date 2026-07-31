@@ -13,6 +13,7 @@ public record ItemEdit(
     int icon,
     int hpRestore,
     int resourceRestore,
+    Integer runeSlots,
     List<ItemEffectEdit> effectEdits) {
 
   public ItemEdit {

@@ -5,4 +5,4 @@ import lombok.With;
 
 @Builder
 @With
-public record ItemEffectEdit(String raw, int value) {}
+public record ItemEffectEdit(String raw, int value, Integer effectKind) {}

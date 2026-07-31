@@ -17,6 +17,7 @@ public final class PatchSummary {
   private int icon;
   private int hp;
   private int resource;
+  private int runeSlots;
   private int duration;
   private int expire;
   private int heroStats;
@@ -60,6 +61,10 @@ public final class PatchSummary {
 
   public void incrementResource() {
     resource++;
+  }
+
+  public void incrementRuneSlots() {
+    runeSlots++;
   }
 
   public void incrementDuration() {
@@ -114,6 +119,7 @@ public final class PatchSummary {
         && icon == 0
         && hp == 0
         && resource == 0
+        && runeSlots == 0
         && duration == 0
         && expire == 0
         && heroStats == 0
@@ -141,6 +147,7 @@ public final class PatchSummary {
     addPart(parts, "icon", icon);
     addPart(parts, "hp", hp);
     addPart(parts, "resource", resource);
+    addPart(parts, "runeSlots", runeSlots);
     addPart(parts, "duration", duration);
     addPart(parts, "expire", expire);
     addPart(parts, "heroStats", heroStats);

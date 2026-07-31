@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum ChangeColumnName {
   AMOUNT("Amount"),
   COST("Cost"),
+  DAMAGE("Damage"),
+  DAMAGE_TYPE("Damage Type"),
   CRIT_CHANCE("Crit %"),
   CRIT_DAMAGE("Crit Dmg"),
   DECODED_EFFECT_VALUE("Decoded Effect Value"),
@@ -24,6 +26,7 @@ public enum ChangeColumnName {
   MAX("Max"),
   PRICE("Price"),
   RESIST_ID("Resist ID"),
+  RUNE_SLOTS("Rune Slots"),
   SOUL_RESTORE("Soul Restore"),
   SPD("SPD"),
   SPD_CURVE("SPD Curve"),

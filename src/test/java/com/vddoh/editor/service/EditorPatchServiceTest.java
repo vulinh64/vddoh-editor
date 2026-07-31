@@ -506,13 +506,18 @@ class EditorPatchServiceTest {
   void knownItemsDecodeToConfirmedEffects() throws Exception {
     EditorWorkspace workspace = workspace("items.jar");
 
+    assertEquals(1, item(workspace, "Sickle blade").runeSlots());
+    assertEquals(2, item(workspace, "Foryn-crossbow").runeSlots());
+    assertEquals(2, item(workspace, "Syr-Spear").runeSlots());
+    assertEquals(1, item(workspace, "Bronze armor").runeSlots());
+    assertEquals(2, item(workspace, "War plate mail").runeSlots());
     assertEffect(
         item(workspace, "Sickle blade"), "Equipment", "Packed Stat", "Strength/Power", "1");
     assertEffect(
         item(workspace, "Sickle blade"),
         "Equipment/Weapon",
         "Flat stat/damage",
-        "Strength/Power",
+        "Physical",
         "90");
     assertEffect(
         item(workspace, "War plate mail"), "Equipment", "Packed Stat", "Attack bonus", "10");
@@ -569,6 +574,92 @@ class EditorPatchServiceTest {
     assertEquals(888, patchedVampireStone.resourceRestore());
     assertEffect(patchedVampireStone, "Consumable", "HP effect", "HP", "777");
     assertEffect(patchedVampireStone, "Consumable", "Resource effect", "Blood/Soul", "888");
+  }
+
+  @Test
+  void itemPatchWritesRuneSlotsWithoutChangingWeaponReach() throws Exception {
+    EditorWorkspace workspace = workspace("rune-slots.jar");
+    ItemSnapshot sickle = item(workspace, "Sickle blade");
+    ItemSnapshot warPlate = item(workspace, "War plate mail");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .itemEdits(
+                    List.of(itemEdit(sickle, 4), itemEdit(warPlate, 3)))
+                .build());
+
+    EditorWorkspace patched = EditorLoadService.load(result.outputJar());
+    ItemSnapshot patchedSickle = item(patched, "Sickle blade");
+    ItemSnapshot patchedWarPlate = item(patched, "War plate mail");
+    assertEquals(4, patchedSickle.runeSlots());
+    assertEquals(sickle.weaponReach(), patchedSickle.weaponReach());
+    assertEquals(3, patchedWarPlate.runeSlots());
+  }
+
+  @Test
+  void itemPatchWritesPhysicalAndElementalWeaponDamage() throws Exception {
+    EditorWorkspace workspace = workspace("weapon-damage.jar");
+    ItemSnapshot sickle = item(workspace, "Sickle blade");
+    ItemSnapshot icyLance = item(workspace, "Icy lance");
+    ItemSnapshot staffOfLight = item(workspace, "Staff of light");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .itemEdits(
+                    List.of(
+                        weaponDamageEdit(sickle, 321),
+                        weaponDamageEdit(icyLance, 222),
+                        weaponDamageEdit(staffOfLight, 123)))
+                .build());
+
+    EditorWorkspace patched = EditorLoadService.load(result.outputJar());
+    assertEffect(item(patched, "Sickle blade"), "Equipment/Weapon", "Flat stat/damage", "Physical", "321");
+    assertEffect(item(patched, "Icy lance"), "Equipment/Weapon", "Elemental Damage", "Ice damage", "222");
+    assertEffect(item(patched, "Staff of light"), "Equipment/Weapon", "Elemental Damage", "Fire damage", "123");
+  }
+
+  @Test
+  void itemPatchCanChangeExistingWeaponDamageType() throws Exception {
+    EditorWorkspace workspace = workspace("weapon-damage-type.jar");
+    ItemSnapshot sickle = item(workspace, "Sickle blade");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .itemEdits(List.of(weaponDamageEdit(sickle, 150, 2)))
+                .build());
+
+    assertEffect(
+        item(EditorLoadService.load(result.outputJar()), "Sickle blade"),
+        "Equipment/Weapon",
+        "Elemental Damage",
+        "Ice damage",
+        "150");
+  }
+
+  @Test
+  void itemPatchWritesArmorPhysicalAbsorption() throws Exception {
+    EditorWorkspace workspace = workspace("armor-absorption.jar");
+    ItemSnapshot warPlate = item(workspace, "War plate mail");
+
+    BuildResult result =
+        EditorPatchService.buildFullPatch(
+            PatchBuildRequest.builder()
+                .workspace(workspace)
+                .itemEdits(List.of(armorAbsorptionEdit(warPlate)))
+                .build());
+
+    assertEffect(
+        item(EditorLoadService.load(result.outputJar()), "War plate mail"),
+        "Equipment/Weapon",
+        "Armor value",
+        "Physical",
+        "200");
   }
 
   @Test
@@ -666,6 +757,50 @@ class EditorPatchServiceTest {
         .filter(item -> name.equals(item.name()))
         .findFirst()
         .orElseThrow(() -> new AssertionError("Missing item " + name));
+  }
+
+  private static ItemEdit itemEdit(ItemSnapshot item, int runeSlots) {
+    return ItemEdit.builder()
+        .itemId(item.id())
+        .price(item.price())
+        .icon(item.icon())
+        .hpRestore(item.hpRestore())
+        .resourceRestore(item.resourceRestore())
+        .runeSlots(runeSlots)
+        .effectEdits(List.of())
+        .build();
+  }
+
+  private static ItemEdit weaponDamageEdit(ItemSnapshot item, int damage) {
+    return weaponDamageEdit(item, damage, null);
+  }
+
+  private static ItemEdit weaponDamageEdit(ItemSnapshot item, int damage, Integer effectKind) {
+    return ItemEdit.builder()
+        .itemId(item.id())
+        .price(item.price())
+        .icon(item.icon())
+        .hpRestore(item.hpRestore())
+        .resourceRestore(item.resourceRestore())
+        .effectEdits(
+            List.of(
+                ItemEffectEdit.builder()
+                    .raw("int_arr_a[0]")
+                    .value(damage)
+                    .effectKind(effectKind)
+                    .build()))
+        .build();
+  }
+
+  private static ItemEdit armorAbsorptionEdit(ItemSnapshot item) {
+    return ItemEdit.builder()
+        .itemId(item.id())
+        .price(item.price())
+        .icon(item.icon())
+        .hpRestore(item.hpRestore())
+        .resourceRestore(item.resourceRestore())
+        .effectEdits(List.of(ItemEffectEdit.builder().raw("int_arr_a[0]").value(200).build()))
+        .build();
   }
 
   private static void assertEffect(

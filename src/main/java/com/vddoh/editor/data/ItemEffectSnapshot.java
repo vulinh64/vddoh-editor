@@ -14,4 +14,6 @@ public record ItemEffectSnapshot(
     String raw,
     boolean editable,
     int numericValue,
-    int max) {}
+    int max,
+    int effectKind,
+    boolean effectKindEditable) {}

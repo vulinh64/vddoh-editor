@@ -31,11 +31,20 @@ public enum ItemEffectLabel {
     if (category == 2 && kind == 0) {
       return ARMOR_VALUE.getDisplayName();
     }
+    if (category == 3 && kind >= 1 && kind <= 4) {
+      return "Elemental Damage";
+    }
+    if (category == 3 && kind == 5) {
+      return "Blood Drain";
+    }
     return fallback;
   }
 
   public static String intEffectTarget(int category, int kind, String fallback) {
     if (category == 2 && kind == 0) {
+      return "Physical";
+    }
+    if (category == 3 && kind == 0) {
       return "Physical";
     }
     return DamageEffectKind.itemEffectName(kind, fallback);

@@ -17,6 +17,7 @@ public final class FxItemViewModel {
   private final IntegerProperty icon;
   private final IntegerProperty hpRestore;
   private final IntegerProperty resourceRestore;
+  private final IntegerProperty runeSlots;
 
   public FxItemViewModel(ItemSnapshot item) {
     this.item = item;
@@ -24,6 +25,7 @@ public final class FxItemViewModel {
     icon = new SimpleIntegerProperty(item.icon());
     hpRestore = new SimpleIntegerProperty(item.hpRestore());
     resourceRestore = new SimpleIntegerProperty(item.resourceRestore());
+    runeSlots = new SimpleIntegerProperty(item.runeSlots());
     this.effects =
         FXCollections.observableArrayList(
             item.effects().stream().map(FxItemEffectViewModel::new).toList());
@@ -77,6 +79,10 @@ public final class FxItemViewModel {
     return resourceRestore.get();
   }
 
+  public IntegerProperty runeSlotsProperty() {
+    return runeSlots;
+  }
+
   public int hpBonus() {
     return item.hpBonus();
   }
@@ -111,6 +117,7 @@ public final class FxItemViewModel {
         || icon() != item.icon()
         || hpRestore() != item.hpRestore()
         || resourceRestore() != item.resourceRestore()
+        || runeSlots.get() != item.runeSlots()
         || effects.stream().anyMatch(FxItemEffectViewModel::changed);
   }
 
@@ -119,6 +126,7 @@ public final class FxItemViewModel {
     icon.set(item.icon());
     hpRestore.set(item.hpRestore());
     resourceRestore.set(item.resourceRestore());
+    runeSlots.set(item.runeSlots());
     effects.forEach(FxItemEffectViewModel::reset);
   }
 
@@ -129,6 +137,7 @@ public final class FxItemViewModel {
         .icon(checkedRange(icon(), 0x7f, "icon"))
         .hpRestore(checkedRange(hpRestore(), 0xffff, "HP restore/effect"))
         .resourceRestore(checkedRange(resourceRestore(), 0xffff, "resource restore/effect"))
+        .runeSlots(runeSlots.get() == item.runeSlots() ? null : checkedRange(runeSlots.get(), 4, "rune slots"))
         .effectEdits(
             effects.stream()
                 .filter(FxItemEffectViewModel::changed)

@@ -42,6 +42,7 @@ Do not re-derive these from scratch unless behavior changes:
 - Base evasion: bytecode constant `5 + Reflexes bonus`; not per-hero data.
 - Resistance overflow: Hero resistance byte array clamps negative overflow to 0 in vanilla.
 - Group talents write to `GameEngine.var_short_arr_a` slots, but that array is also general script/save state.
+- Equipment rune slots: runtime `Item.k.g`; see `docs/dat-bitmaps/item-dat-bitmap.md` for the armor-tail and weapon-tail bit layouts.
 
 ## Useful Search Patterns
 

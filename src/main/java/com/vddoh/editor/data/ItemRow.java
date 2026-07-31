@@ -13,7 +13,7 @@ public final class ItemRow {
   final int hpBonus;
   final int resourceBonus;
   final int weaponReach;
-  final int weaponMode;
+  final int runeSlots;
   final List<ItemEffectRow> effects;
   final String notes;
   int price;
@@ -36,7 +36,7 @@ public final class ItemRow {
       int hpBonus,
       int resourceBonus,
       int weaponReach,
-      int weaponMode,
+      int runeSlots,
       List<ItemEffectRow> effects,
       String notes) {
     this.id = id;
@@ -53,7 +53,7 @@ public final class ItemRow {
     this.hpBonus = hpBonus;
     this.resourceBonus = resourceBonus;
     this.weaponReach = weaponReach;
-    this.weaponMode = weaponMode;
+    this.runeSlots = runeSlots;
     this.effects = effects;
     this.notes = notes;
   }

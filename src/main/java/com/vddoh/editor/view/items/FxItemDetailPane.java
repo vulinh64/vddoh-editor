@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -21,6 +22,7 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
@@ -34,11 +36,13 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.util.converter.IntegerStringConverter;
+import javafx.util.StringConverter;
 
 public final class FxItemDetailPane extends ScrollPane {
 
   public static final String READ_ONLY_HINT = "read-only";
   public static final String WEAPON_SIDE = "Weapon";
+  private static final List<Integer> DAMAGE_KINDS = List.of(0, 1, 2, 3, 4, 5);
   private final FxEditorState state;
   private final FxNavigation navigation;
   private final ObjectProperty<FxItemViewModel> selectedItem = new SimpleObjectProperty<>();
@@ -105,31 +109,57 @@ public final class FxItemDetailPane extends ScrollPane {
     addRow(grid, 0, "ID", item.id(), READ_ONLY_HINT);
     addRow(grid, 1, "Name", item.name(), READ_ONLY_HINT);
     addRow(grid, 2, "Category", item.slotLabel(), "category=%d".formatted(item.category()));
-    addRow(grid, 3, "Subtype", item.subtype(), "raw type=%d".formatted(item.rawType()));
-    addRow(grid, 4, "Allowed", item.allowedClasses(), READ_ONLY_HINT);
+    addRow(grid, 3, "Allowed", item.allowedClasses(), READ_ONLY_HINT);
     addEditableRow(
         grid,
-        5,
+        4,
         "Price (0..65535)",
         ChangeColumnName.PRICE,
         viewModel,
         viewModel.priceProperty(),
         0xffff);
-    addEditableRow(
-        grid, 6, "Icon (0..127)", ChangeColumnName.ICON, viewModel, viewModel.iconProperty(), 0x7f);
     return grid;
   }
 
-  private static GridPane equipmentGrid(FxItemViewModel viewModel) {
+  private GridPane equipmentGrid(FxItemViewModel viewModel) {
     ItemSnapshot item = viewModel.item();
     GridPane grid = grid();
     addRow(grid, 0, "Slot", item.slotLabel(), item.category() == 7 ? "rune/modifier" : "");
-    addRow(grid, 1, "HP Bonus", item.hpBonus(), "read-only preview");
-    addRow(grid, 2, "Resource Bonus", item.resourceBonus(), "read-only preview");
-    addRow(grid, 3, "Weapon Reach", item.weaponReach(), "weapons only");
-    addRow(grid, 4, "Weapon Mode", item.weaponMode(), "weapons only");
-    addRow(grid, 5, "Stat Bonuses", viewModel.statBonusSummary(), "decoded packed stats");
-    addRow(grid, 6, "Damage / Effects", viewModel.effectSummary(), "decoded effect rows");
+    int row = 1;
+    if (item.category() == 3) {
+      addRow(grid, row++, "Weapon Reach", item.weaponReach(), "weapons only");
+      Optional<FxItemEffectViewModel> weaponDamage =
+          viewModel.effects().stream().filter(FxItemEffectViewModel::canEditEffectKind).findFirst();
+      if (weaponDamage.isPresent()) {
+        FxItemEffectViewModel effect = weaponDamage.orElseThrow();
+        addWeaponDamageTypeRow(grid, row++, viewModel, effect);
+        addEffectValueRow(grid, row++, viewModel, effect, "Weapon damage", 0xffff, "0..65535");
+      }
+    }
+    if (item.category() == 2) {
+      Optional<FxItemEffectViewModel> armorAbsorption =
+          viewModel.effects().stream().filter(FxItemEffectViewModel::isArmorPhysicalEffect).findFirst();
+      if (armorAbsorption.isPresent()) {
+        addEffectValueRow(
+            grid,
+            row++,
+            viewModel,
+            armorAbsorption.orElseThrow(),
+            "Physical absorption",
+            0xff,
+            "0..255");
+      }
+    }
+    if (item.category() == 3 || (item.category() == 2 && item.subtype() == 1)) {
+      addEditableRow(
+          grid,
+          row,
+          "Rune Slots (0..4)",
+          ChangeColumnName.RUNE_SLOTS,
+          viewModel,
+          viewModel.runeSlotsProperty(),
+          4);
+    }
     return grid;
   }
 
@@ -238,15 +268,112 @@ public final class FxItemDetailPane extends ScrollPane {
         .getColumns()
         .setAll(
             List.of(
-                column("Side", "side"),
-                column("Type", "type"),
-                column("Target", "target"),
+                column(EffectColumn.SIDE),
+                column(EffectColumn.TYPE),
+                column(EffectColumn.TARGET),
                 editableValueColumn(viewModel),
-                column("Range", "range"),
-                column("Editable", "editable"),
-                column("Extra", "extra"),
-                column("Raw", "raw")));
+                column(EffectColumn.RANGE),
+                column(EffectColumn.EDITABLE),
+                column(EffectColumn.EXTRA),
+                column(EffectColumn.RAW)));
     return table;
+  }
+
+  private void addWeaponDamageTypeRow(
+      GridPane grid, int row, FxItemViewModel item, FxItemEffectViewModel effect) {
+    Label label = new Label("Weapon elemental (damage type)");
+    label.getStyleClass().add("field-label");
+    ComboBox<Integer> selector = new ComboBox<>(FXCollections.observableArrayList(DAMAGE_KINDS));
+    selector.setConverter(damageKindConverter());
+    selector.setValue(effect.effectKind());
+    selector.valueProperty().addListener(
+        (_, oldValue, value) -> {
+          if (value == null || value.equals(oldValue)) {
+            return;
+          }
+          effect.effectKindProperty().set(value);
+          state.recordChange(
+              EditorTabName.ITEMS,
+              item.id(),
+              "%s / %s".formatted(item.name(), effect.raw()),
+              ChangeColumnName.DAMAGE_TYPE,
+              oldValue,
+              value);
+        });
+    Label note = new Label("existing weapon damage entry");
+    note.getStyleClass().add("field-note");
+    grid.add(label, 0, row);
+    grid.add(selector, 1, row);
+    grid.add(note, 2, row);
+  }
+
+  private void addEffectValueRow(
+      GridPane grid,
+      int row,
+      FxItemViewModel item,
+      FxItemEffectViewModel effect,
+      String labelText,
+      int maximum,
+      String rangeHint) {
+    Label label = new Label(labelText);
+    label.getStyleClass().add("field-label");
+    Spinner<Integer> spinner = new Spinner<>();
+    spinner.setEditable(true);
+    spinner.setValueFactory(
+        new SpinnerValueFactory.IntegerSpinnerValueFactory(0, maximum, effect.valueProperty().get()));
+    FxSpinnerSupport.commitOnEnter(spinner);
+    boolean[] syncing = {false};
+    spinner
+        .getValueFactory()
+        .valueProperty()
+        .addListener(
+            (_, oldValue, value) -> {
+              if (syncing[0]) {
+                return;
+              }
+              effect.valueProperty().set(value);
+              state.recordChange(
+                  EditorTabName.ITEMS,
+                  item.id(),
+                  "%s / %s".formatted(item.name(), effect.raw()),
+                  ChangeColumnName.DAMAGE,
+                  oldValue,
+                  value);
+            });
+    FxSpinnerSupport.syncFromProperty(spinner, effect.valueProperty(), syncing);
+    Label note = new Label(rangeHint);
+    note.getStyleClass().add("field-note");
+    grid.add(label, 0, row);
+    grid.add(spinner, 1, row);
+    grid.add(note, 2, row);
+  }
+
+  private static StringConverter<Integer> damageKindConverter() {
+    return new StringConverter<>() {
+      @Override
+      public String toString(Integer kind) {
+        if (kind == null) {
+          return "";
+        }
+        return switch (kind) {
+          case 0 -> "Physical";
+          case 1 -> "Fire";
+          case 2 -> "Ice";
+          case 3 -> "Light";
+          case 4 -> "Shadow";
+          case 5 -> "Blood Drain";
+          default -> "";
+        };
+      }
+
+      @Override
+      public Integer fromString(String text) {
+        return DAMAGE_KINDS.stream()
+            .filter(kind -> toString(kind).equals(text))
+            .findFirst()
+            .orElse(0);
+      }
+    };
   }
 
   private static GridPane rawGrid(ItemSnapshot item) {
@@ -320,22 +447,53 @@ public final class FxItemDetailPane extends ScrollPane {
     GridPane.setHgrow(spinner, Priority.ALWAYS);
   }
 
-  private static TableColumn<FxItemEffectViewModel, String> column(String title, String property) {
-    TableColumn<FxItemEffectViewModel, String> column = new TableColumn<>(title);
-    Function<FxItemEffectViewModel, String> value =
-        switch (property) {
-          case "side" -> FxItemEffectViewModel::side;
-          case "type" -> FxItemEffectViewModel::type;
-          case "target" -> FxItemEffectViewModel::target;
-          case "value" -> FxItemEffectViewModel::value;
-          case "range" -> FxItemEffectViewModel::range;
-          case "editable" -> FxItemEffectViewModel::editable;
-          case "extra" -> FxItemEffectViewModel::extra;
-          case "raw" -> FxItemEffectViewModel::raw;
-          default -> _ -> "";
-        };
-    column.setCellValueFactory(cell -> stringValue(value.apply(cell.getValue())));
+  private static TableColumn<FxItemEffectViewModel, String> column(EffectColumn effectColumn) {
+    TableColumn<FxItemEffectViewModel, String> column = new TableColumn<>(effectColumn.title());
+    column.setCellValueFactory(
+        cell -> {
+          FxItemEffectViewModel effect = cell.getValue();
+          if (effectColumn.refreshesForEffectKind()) {
+            return Bindings.createStringBinding(
+                () -> effectColumn.valueOf(effect), effect.effectKindProperty());
+          }
+          return stringValue(effectColumn.valueOf(effect));
+        });
     return column;
+  }
+
+  private enum EffectColumn {
+    SIDE("Side", FxItemEffectViewModel::side, false),
+    TYPE("Type", FxItemEffectViewModel::type, true),
+    TARGET("Target", FxItemEffectViewModel::target, true),
+    RANGE("Range", FxItemEffectViewModel::range, false),
+    EDITABLE("Editable", FxItemEffectViewModel::editable, false),
+    EXTRA("Extra", FxItemEffectViewModel::extra, false),
+    RAW("Raw", FxItemEffectViewModel::raw, false);
+
+    private final String title;
+    private final Function<FxItemEffectViewModel, String> value;
+    private final boolean refreshesForEffectKind;
+
+    EffectColumn(
+        String title,
+        Function<FxItemEffectViewModel, String> value,
+        boolean refreshesForEffectKind) {
+      this.title = title;
+      this.value = value;
+      this.refreshesForEffectKind = refreshesForEffectKind;
+    }
+
+    String title() {
+      return title;
+    }
+
+    String valueOf(FxItemEffectViewModel effect) {
+      return value.apply(effect);
+    }
+
+    boolean refreshesForEffectKind() {
+      return refreshesForEffectKind;
+    }
   }
 
   private TableColumn<FxItemEffectViewModel, Integer> editableValueColumn(
@@ -371,7 +529,7 @@ public final class FxItemDetailPane extends ScrollPane {
       public void startEdit() {
         if (getTableRow() == null
             || !(getTableRow().getItem() instanceof FxItemEffectViewModel viewModel)
-            || !viewModel.canEditValue()) {
+            || !viewModel.canEditValueInTable()) {
           return;
         }
         super.startEdit();

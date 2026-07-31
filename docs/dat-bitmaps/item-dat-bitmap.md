@@ -45,7 +45,7 @@ Equipment-like categories `1..7` have an effect flag byte parsed by
 | `0x04` | `short_e` packed stat | 2 bytes | Confirmed | Partial | Editor exposes high and low bytes separately. |
 | `0x02` | `short_f` packed stat | 2 bytes | Confirmed | Partial | Editor exposes high and low bytes separately. |
 | `0x01` | `byte_d` scalar bonus | 1 byte | Confirmed | Yes | Equipment bonus overwrite quirk is patched in `g.class`, not here. |
-| `0x80` | `int_arr_a`, and rune `int_arr_b` | 3-byte entries | Probable | No | Parsed/skipped only; not written yet. |
+| `0x80` | `int_arr_a`, and rune `int_arr_b` | 3-byte entries | Confirmed for weapon damage and armor value | Partial | Category-3 weapon entries write byte 0 as the selected damage kind (`0..5`) and bytes 1..2 as the 16-bit damage value. Category-2 armor entries preserve byte 0 and edit bytes 1..2 through the `0..255` Physical absorption control. Rune arrays remain read-only. |
 | `0x40` | `short_arr_a` | 2-byte entries | Confirmed | Partial | Existing entries only; high byte target/status preserved, low byte value written. |
 | `0x20` | `short_arr_b` | 2-byte entries | Confirmed | Partial | Existing entries only; high byte target/status preserved, low byte value written. |
 
@@ -105,6 +105,24 @@ Confirmed example: Vampire Stone uses `short_g = 999` and `short_h = 999`.
 | `9`, `10` | skip 1 byte | Confirmed | No | Linked skill id/level are currently read-only item fields. |
 | `12` | `skipQuestTail` | Probable | No | Quest item tail not written. |
 
+## Equipment Rune Slots
+
+The original parser stores the rune-slot count in runtime item field `k.g`.
+The equipment menu uses that field as its loop bound when drawing rune positions.
+
+| Category | Packed location | Byte/bit layout | Range | Confidence | Writable |
+|---:|---|---|---:|---|---|
+| `2`, subtype `1` main armor | Category-tail parser position `+1` | bits `3..0` = rune-slot count; bits `7..4` preserved | editor `0..4` | Confirmed | Yes, low nibble only |
+| `3` weapon | Weapon-tail parser position `+3` (`byte_f`) | bits `7..5` = rune-slot count; bits `4` and `3..0` are separate weapon data | editor `0..4` | Confirmed | Yes, bits `7..5` only |
+
+Confirmed fixture examples: Bronze armor has `1`, War plate mail has `2`, Sickle blade has
+`1`, Foryn-crossbow has `2`, and Syr spear has `2`. The editor displays this value as
+editable from `0..4` and preserves all neighboring packed bits.
+
+Rune attachment applies only to weapons and category-2 subtype-1 main armor. The same tail
+byte is present for other equipment categories, but it is preserved as unknown data and is not
+displayed or interpreted as a rune count.
+
 ## Current Write Policy
 
 The editor may write:
@@ -112,6 +130,8 @@ The editor may write:
 - top-level `Price`;
 - top-level `Icon` low 7 bits;
 - existing packed stat high/low bytes;
+- existing category-3 weapon `int_arr_a` damage values;
+- existing category-2 armor `int_arr_a` Physical absorption values;
 - existing `short_arr_a` / `short_arr_b` low value bytes;
 - category-5 `short_g` and `short_h` full 16-bit values;
 - category-5 `byte_q` when present.
@@ -120,6 +140,5 @@ The editor must not:
 
 - add or remove item effect groups;
 - change array counts;
-- edit `int_arr_a` / `int_arr_b` rows until target-id and value controls are
-  split and tested;
+- edit `int_arr_b` rune/armor arrays or non-weapon `int_arr_a` rows;
 - change category, name, allowed-class blocks, or unknown category tails.

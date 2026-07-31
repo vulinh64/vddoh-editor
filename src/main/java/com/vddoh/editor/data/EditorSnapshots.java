@@ -22,7 +22,7 @@ public final class EditorSnapshots {
         .hpBonus(row.hpBonus)
         .resourceBonus(row.resourceBonus)
         .weaponReach(row.weaponReach)
-        .weaponMode(row.weaponMode)
+        .runeSlots(row.runeSlots)
         .notes(row.notes)
         .effects(row.effects.stream().map(EditorSnapshots::itemEffect).toList())
         .build();
@@ -175,6 +175,8 @@ public final class EditorSnapshots {
         .editable(editable)
         .numericValue(numericValue)
         .max(Math.max(max, 0))
+        .effectKind(row.effectKind())
+        .effectKindEditable(row.effectKindEditable())
         .build();
   }
 
@@ -198,6 +200,9 @@ public final class EditorSnapshots {
     }
     if (raw.startsWith("short_arr_a[") || raw.startsWith("short_arr_b[")) {
       return 0xff;
+    }
+    if (raw.startsWith("int_arr_a[")) {
+      return 0xffff;
     }
     return -1;
   }

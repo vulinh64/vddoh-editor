@@ -22,7 +22,7 @@ public record ItemSnapshot(
     int hpBonus,
     int resourceBonus,
     int weaponReach,
-    int weaponMode,
+    int runeSlots,
     String notes,
     List<ItemEffectSnapshot> effects) {
 

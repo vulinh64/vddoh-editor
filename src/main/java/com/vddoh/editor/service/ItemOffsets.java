@@ -12,6 +12,9 @@ public final class ItemOffsets {
   private int iconOffset = -1;
   private int hpRestoreOffset = -1;
   private int resourceRestoreOffset = -1;
+  private int runeSlotsOffset = -1;
+  private int runeSlotsMask;
+  private int runeSlotsShift;
   private final Map<String, EffectOffset> effectOffsets = new HashMap<>();
 
   public void putEffectOffset(String key, int offset, int width, int byteIndex) {

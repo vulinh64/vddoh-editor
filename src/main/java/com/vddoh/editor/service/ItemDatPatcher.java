@@ -37,6 +37,7 @@ public final class ItemDatPatcher {
     writeIcon(data, o, patch, summary);
     writeHpRestore(data, o, patch, summary);
     writeResourceRestore(data, o, patch, summary);
+    writeRuneSlots(data, o, patch, summary);
     writeEffectEdits(data, o, patch, summary);
   }
 
@@ -80,6 +81,22 @@ public final class ItemDatPatcher {
     }
   }
 
+  private static void writeRuneSlots(
+      byte[] data, ItemOffsets o, ItemPatch patch, PatchSummary summary) {
+    if (patch.runeSlots() == null) {
+      return;
+    }
+    if (o.getRuneSlotsOffset() < 0 || patch.runeSlots() < 0 || patch.runeSlots() > 4) {
+      summary.incrementSkipped();
+      return;
+    }
+    int offset = o.getRuneSlotsOffset();
+    int preserved = u8(data[offset]) & ~o.getRuneSlotsMask();
+    int encoded = (patch.runeSlots() << o.getRuneSlotsShift()) & o.getRuneSlotsMask();
+    data[offset] = (byte) (preserved | encoded);
+    summary.incrementRuneSlots();
+  }
+
   private static ItemOffsets[] parseItemOffsets(byte[] data) {
     int n = 0;
     ItemOffsets[] offsets = new ItemOffsets[u8(data[n])];
@@ -100,7 +117,7 @@ public final class ItemDatPatcher {
     n = parsePriceAndIcon(n, category, offsets);
     n = skipAllowedClasses(data, n, category);
     n = parseEquipmentFields(data, n, category, offsets);
-    n = skipCategoryTail(data, n, category, offsets);
+    n = skipCategoryTail(data, n, category, rawType & 0x0f, offsets);
     return new ParsedItem(offsets, n);
   }
 
@@ -137,7 +154,7 @@ public final class ItemDatPatcher {
       putEffectOffset(offsets, "byte_d", n, 1, 0);
       n++;
     }
-    n = skipIntEffectArray(data, n, flags, category);
+    n = skipIntEffectArray(data, n, flags, category, offsets);
     n = parseShortEffectArray(data, n, flags, 0x40, offsets, "short_arr_a");
     return parseShortEffectArray(data, n, flags, 0x20, offsets, "short_arr_b");
   }
@@ -152,11 +169,17 @@ public final class ItemDatPatcher {
     return n + 2;
   }
 
-  private static int skipIntEffectArray(byte[] data, int n, int flags, int category) {
+  private static int skipIntEffectArray(
+      byte[] data, int n, int flags, int category, ItemOffsets offsets) {
     if ((flags & 0x80) == 0) {
       return n;
     }
     int len = u8(data[n++]);
+    if (category == 2 || category == 3) {
+      for (int i = 0; i < len; i++) {
+        putEffectOffset(offsets, "int_arr_a[%d]".formatted(i), n + i * 3, 3, -1);
+      }
+    }
     n += len * 3;
     if (category == 7) {
       len = u8(data[n++]);
@@ -177,10 +200,12 @@ public final class ItemDatPatcher {
     return n + len * 2;
   }
 
-  private static int skipCategoryTail(byte[] data, int n, int category, ItemOffsets offsets) {
+  private static int skipCategoryTail(
+      byte[] data, int n, int category, int subtype, ItemOffsets offsets) {
     return switch (category) {
-      case 1, 2, 4, 9, 10 -> n + 1;
-      case 3 -> skipWeaponTail(data, n);
+      case 1, 4, 9, 10 -> n + 1;
+      case 2 -> skipArmorTail(n, subtype, offsets);
+      case 3 -> skipWeaponTail(data, n, offsets);
       case 5 -> parseConsumableTail(data, n, offsets);
       case 8 -> skipTextTail(data, n);
       case 12 -> skipQuestTail(data, n);
@@ -188,7 +213,19 @@ public final class ItemDatPatcher {
     };
   }
 
-  private static int skipWeaponTail(byte[] data, int n) {
+  private static int skipArmorTail(int n, int subtype, ItemOffsets offsets) {
+    if (subtype == 1) {
+      offsets.setRuneSlotsOffset(n + 1);
+      offsets.setRuneSlotsMask(0x0f);
+      offsets.setRuneSlotsShift(0);
+    }
+    return n + 1;
+  }
+
+  private static int skipWeaponTail(byte[] data, int n, ItemOffsets offsets) {
+    offsets.setRuneSlotsOffset(n + 3);
+    offsets.setRuneSlotsMask(0xe0);
+    offsets.setRuneSlotsShift(5);
     int flags = u8(data[n + 3]);
     return n + (((flags & 0x0f) > 1) ? 5 : 4);
   }
@@ -232,6 +269,7 @@ public final class ItemDatPatcher {
     return switch (offset.width()) {
       case 1 -> writeByteEffect(data, offset.offset(), edit.value());
       case 2 -> writeShortEffect(data, offset, edit.value());
+      case 3 -> writeIntEffect(data, offset.offset(), edit);
       default -> false;
     };
   }
@@ -248,6 +286,17 @@ public final class ItemDatPatcher {
       data[offset.offset() + offset.byteIndex()] = checkedByte(value, "item effect byte");
     }
 
+    return true;
+  }
+
+  private static boolean writeIntEffect(byte[] data, int offset, ItemEffectEdit edit) {
+    if (edit.effectKind() != null) {
+      if (edit.effectKind() < 0 || edit.effectKind() > 5) {
+        return false;
+      }
+      data[offset] = checkedByte(edit.effectKind(), "weapon damage type");
+    }
+    writeU16(data, offset + 1, edit.value());
     return true;
   }
 

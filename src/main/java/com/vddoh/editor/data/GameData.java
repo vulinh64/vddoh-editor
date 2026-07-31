@@ -176,7 +176,12 @@ public final class GameData {
       int hpBonus = (packedAttackDefense >> 8) & 0xff;
       int resourceBonus = packedAttackDefense & 0xff;
       int weaponReach = category == 3 ? u8(raw(item, 18)) & 0x0f : 0;
-      int weaponMode = category == 3 ? (u8(raw(item, 18)) >> 5) & 7 : 0;
+      int runeSlots =
+          switch (category) {
+            case 2 -> subtype == 1 ? u8(raw(item, 19)) & 0x0f : 0;
+            case 3 -> (u8(raw(item, 18)) >> 5) & 7;
+            default -> 0;
+          };
       List<ItemEffectRow> effects = decodeItemEffects(item, category, statusNames, skillNames);
       appendLinkedSkillPreview(effects, item, category, skillRows);
       rows.add(
@@ -195,9 +200,9 @@ public final class GameData {
               hpBonus,
               resourceBonus,
               weaponReach,
-              weaponMode,
+              runeSlots,
               effects,
-              itemNotes(category, subtype, weaponReach, weaponMode)));
+              itemNotes(category, subtype, weaponReach, runeSlots)));
     }
   }
 
