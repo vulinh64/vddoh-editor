@@ -35,7 +35,7 @@ public final class FxCommandBar extends HBox {
   private final TextField inputJar = new TextField();
   private final TextField outputJar = new TextField();
   private static final String DEFAULT_OUTPUT_FILE = "vddoh-edited.jar";
-  private static final int CLASS_PATCH_OPTION_COUNT = 7;
+  private static final int CLASS_PATCH_OPTION_COUNT = 8;
   private final CheckBox patchResistanceOverflow = new CheckBox("Patch resistance overflow");
   private final CheckBox patchEquipmentBonus = new CheckBox("Patch equipment bonus overwrite");
   private final CheckBox patchPhysicalDamageCap = new CheckBox("Patch physical damage cap");
@@ -44,6 +44,7 @@ public final class FxCommandBar extends HBox {
       new CheckBox("Patch high-value graphic display");
   private final CheckBox patchVictoryReward = new CheckBox("Patch victory EXP reward");
   private final CheckBox patchMonsterRewardParser = new CheckBox("Patch monster EXP/Filar parser");
+  private final CheckBox patchDiagonalBackAttack = new CheckBox("Treat diagonal rear attacks as back attacks");
   private final Button patchJar = new Button();
   private final Button load = new Button("Load");
   private Path latestOutputJar;
@@ -95,6 +96,10 @@ public final class FxCommandBar extends HBox {
         .selectedProperty()
         .bindBidirectional(state.patchMonsterRewardParserProperty());
     patchMonsterRewardParser.setDisable(true);
+    patchDiagonalBackAttack
+        .selectedProperty()
+        .bindBidirectional(state.patchDiagonalBackAttackProperty());
+    patchDiagonalBackAttack.setDisable(true);
     patchResistanceOverflow.setOnAction(_ -> updatePatchJarButton());
     patchEquipmentBonus.setOnAction(_ -> updatePatchJarButton());
     patchPhysicalDamageCap.setOnAction(_ -> updatePatchJarButton());
@@ -102,6 +107,7 @@ public final class FxCommandBar extends HBox {
     patchHighValueGraphicDisplay.setOnAction(_ -> updatePatchJarButton());
     patchVictoryReward.setOnAction(_ -> updatePatchJarButton());
     patchMonsterRewardParser.setOnAction(_ -> updatePatchJarButton());
+    patchDiagonalBackAttack.setOnAction(_ -> updatePatchJarButton());
 
     HBox.setHgrow(inputJar, Priority.ALWAYS);
     HBox.setHgrow(outputJar, Priority.ALWAYS);
@@ -196,10 +202,11 @@ public final class FxCommandBar extends HBox {
           updateHighValueGraphicDisplayControl(workspace);
           updateVictoryRewardControl(workspace);
           updateMonsterRewardParserControl(workspace);
+          updateDiagonalBackAttackControl(workspace);
           patchJar.setDisable(false);
           updatePatchJarButton();
           state.status(
-              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s. Physical damage cap patch state: %s. High-value display patch state: %s. High-value graphic display patch state: %s. Victory reward patch state: %s. Monster reward parser patch state: %s"
+              "Loaded %d items from %s. Resistance patch state: %s. Equipment bonus patch state: %s. Physical damage cap patch state: %s. High-value display patch state: %s. High-value graphic display patch state: %s. Victory reward patch state: %s. Monster reward parser patch state: %s. Diagonal back-attack patch state: %s"
                   .formatted(
                       workspace.items().size(),
                       workspace.inputJar().getFileName(),
@@ -209,7 +216,8 @@ public final class FxCommandBar extends HBox {
                       workspace.highValueDisplayState(),
                       workspace.highValueGraphicDisplayState(),
                       workspace.victoryRewardState(),
-                      workspace.monsterRewardParserState()));
+                      workspace.monsterRewardParserState(),
+                      workspace.diagonalBackAttackState()));
           load.disableProperty().unbind();
           load.setDisable(false);
         });
@@ -353,7 +361,8 @@ public final class FxCommandBar extends HBox {
             + selectedOriginal(patchHighValueDisplay)
             + selectedOriginal(patchHighValueGraphicDisplay)
             + selectedOriginal(patchVictoryReward)
-            + selectedOriginal(patchMonsterRewardParser);
+            + selectedOriginal(patchMonsterRewardParser)
+            + selectedOriginal(patchDiagonalBackAttack);
     int alreadyPatched =
         alreadyPatched(patchResistanceOverflow)
             + alreadyPatched(patchEquipmentBonus)
@@ -361,7 +370,8 @@ public final class FxCommandBar extends HBox {
             + alreadyPatched(patchHighValueDisplay)
             + alreadyPatched(patchHighValueGraphicDisplay)
             + alreadyPatched(patchVictoryReward)
-            + alreadyPatched(patchMonsterRewardParser);
+            + alreadyPatched(patchMonsterRewardParser)
+            + alreadyPatched(patchDiagonalBackAttack);
     patchJar.setText(
         "Patch JAR (%d/%d/%d)".formatted(selected, CLASS_PATCH_OPTION_COUNT, alreadyPatched));
     patchJar.setTooltip(new Tooltip(patchJarTooltip()));
@@ -392,6 +402,7 @@ public final class FxCommandBar extends HBox {
     CheckBox highValueGraphicDisplayOption = dialogCheckBox(patchHighValueGraphicDisplay);
     CheckBox victoryOption = dialogCheckBox(patchVictoryReward);
     CheckBox monsterOption = dialogCheckBox(patchMonsterRewardParser);
+    CheckBox diagonalBackOption = dialogCheckBox(patchDiagonalBackAttack);
     VBox options =
         new VBox(
             8,
@@ -401,7 +412,8 @@ public final class FxCommandBar extends HBox {
             highValueDisplayOption,
             highValueGraphicDisplayOption,
             victoryOption,
-            monsterOption);
+            monsterOption,
+            diagonalBackOption);
     options.setPadding(new Insets(8, 0, 0, 0));
     pane.setContent(options);
 
@@ -423,6 +435,9 @@ public final class FxCommandBar extends HBox {
     monsterOption
         .selectedProperty()
         .unbindBidirectional(patchMonsterRewardParser.selectedProperty());
+    diagonalBackOption
+        .selectedProperty()
+        .unbindBidirectional(patchDiagonalBackAttack.selectedProperty());
     if (shouldBuild) {
       buildPatchedJar(patchJar);
     }
@@ -435,6 +450,23 @@ public final class FxCommandBar extends HBox {
     checkbox.disableProperty().bind(source.disableProperty());
     checkbox.setOnAction(_ -> updatePatchJarButton());
     return checkbox;
+  }
+
+  private void updateDiagonalBackAttackControl(EditorWorkspace workspace) {
+    switch (workspace.diagonalBackAttackState()) {
+      case PATCHED -> {
+        state.patchDiagonalBackAttack(true);
+        patchDiagonalBackAttack.setDisable(true);
+      }
+      case ORIGINAL -> {
+        state.patchDiagonalBackAttack(false);
+        patchDiagonalBackAttack.setDisable(false);
+      }
+      case UNKNOWN -> {
+        state.patchDiagonalBackAttack(false);
+        patchDiagonalBackAttack.setDisable(true);
+      }
+    }
   }
 
   private static void markPatchApplied(CheckBox checkbox, boolean requested) {
@@ -466,6 +498,7 @@ public final class FxCommandBar extends HBox {
         High-value graphic display: %s
         Victory EXP reward: %s
         Monster EXP/Filar parser: %s
+        Diagonal back attacks: %s
         """
         .formatted(
             optionTooltip(patchResistanceOverflow),
@@ -474,7 +507,8 @@ public final class FxCommandBar extends HBox {
             optionTooltip(patchHighValueDisplay),
             optionTooltip(patchHighValueGraphicDisplay),
             optionTooltip(patchVictoryReward),
-            optionTooltip(patchMonsterRewardParser))
+            optionTooltip(patchMonsterRewardParser),
+            optionTooltip(patchDiagonalBackAttack))
         .strip();
   }
 
@@ -503,6 +537,8 @@ public final class FxCommandBar extends HBox {
         state.patchVictoryReward() && !patchVictoryReward.isDisable();
     boolean monsterRewardParserPatchRequested =
         state.patchMonsterRewardParser() && !patchMonsterRewardParser.isDisable();
+    boolean diagonalBackAttackPatchRequested =
+        state.patchDiagonalBackAttack() && !patchDiagonalBackAttack.isDisable();
     Task<BuildResult> task =
         new Task<>() {
           @Override
@@ -516,6 +552,7 @@ public final class FxCommandBar extends HBox {
                     .highValueGraphicDisplayPatchRequested(highValueGraphicDisplayPatchRequested)
                     .victoryRewardPatchRequested(victoryRewardPatchRequested)
                     .monsterRewardParserPatchRequested(monsterRewardParserPatchRequested)
+                    .diagonalBackAttackPatchRequested(diagonalBackAttackPatchRequested)
                     .build());
           }
         };
@@ -535,6 +572,7 @@ public final class FxCommandBar extends HBox {
           markPatchApplied(patchHighValueGraphicDisplay, highValueGraphicDisplayPatchRequested);
           markPatchApplied(patchVictoryReward, victoryRewardPatchRequested);
           markPatchApplied(patchMonsterRewardParser, monsterRewardParserPatchRequested);
+          markPatchApplied(patchDiagonalBackAttack, diagonalBackAttackPatchRequested);
           updatePatchJarButton();
         });
     task.setOnFailed(
@@ -564,6 +602,7 @@ public final class FxCommandBar extends HBox {
                     .highValueGraphicDisplayPatchRequested(false)
                     .victoryRewardPatchRequested(false)
                     .monsterRewardParserPatchRequested(false)
+                    .diagonalBackAttackPatchRequested(false)
                     .build());
           }
         };

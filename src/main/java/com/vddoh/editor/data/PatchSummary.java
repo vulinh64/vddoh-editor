@@ -29,6 +29,7 @@ public final class PatchSummary {
   private int highValueGraphicDisplay;
   private int victoryExpReward;
   private int monsterRewardParser;
+  private int diagonalBackAttack;
   private int monsterHeader;
   private int monsterCoreStats;
   private int monsterEffect;
@@ -131,6 +132,7 @@ public final class PatchSummary {
         && highValueGraphicDisplay == 0
         && victoryExpReward == 0
         && monsterRewardParser == 0
+        && diagonalBackAttack == 0
         && monsterHeader == 0
         && monsterCoreStats == 0
         && monsterEffect == 0
@@ -159,6 +161,7 @@ public final class PatchSummary {
     addPart(parts, "highValueGraphicDisplay", highValueGraphicDisplay);
     addPart(parts, "victoryExpReward", victoryExpReward);
     addPart(parts, "monsterRewardParser", monsterRewardParser);
+    addPart(parts, "diagonalBackAttack", diagonalBackAttack);
     addPart(parts, "monsterHeader", monsterHeader);
     addPart(parts, "monsterCoreStats", monsterCoreStats);
     addPart(parts, "monsterEffect", monsterEffect);

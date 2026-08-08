@@ -329,6 +329,8 @@ Level 4: 13% evasion
 
 Facing controls which checks are allowed.
 
+The optional diagonal-back-attack patch affects hero basic attacks only: it treats either diagonal in the target's rear half-plane as Back rather than Side. Direct back, front, and true side behavior stays unchanged.
+
 For a physical attack:
 
 ```text

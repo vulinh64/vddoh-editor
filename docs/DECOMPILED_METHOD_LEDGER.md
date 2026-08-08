@@ -385,6 +385,10 @@ The old `PhysicalDamageCapClassPatcher` targets `g.class` and is disproven for
 this purpose. It must be replaced with a guarded `b.class` patcher before the
 editor control is used again.
 
+### Diagonal Back-Attack Classification
+
+`b.a(int heroIndex)` initially treats equal hero/battle-unit direction bytes as Back, opposite pairs (`1|4` and `2|8`) as Front, and the remaining perpendicular combinations as Side. The guarded `DiagonalBackAttackClassPatcher` preserves that logic but checks the battle-unit facing byte against the hero's battle coordinates before the Side/Front branch. A hero in the target's rear half-plane is marked Back, so rear diagonals skip both miss and evade checks; front and true side positions retain their vanilla classification.
+
 The same low-10-bit handoff exists on the opposite physical direction:
 `g.a(b)` builds incoming battle-unit damage in `v`, applies the critical bonus,
 then calls the hero HP/resource updater as:

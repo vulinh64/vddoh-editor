@@ -71,6 +71,25 @@ class EditorPatchServiceTest {
     assertVinceBaseline(vince);
   }
 
+  @Test
+  void diagonalBackAttackPatchPromotesOnlyRearHalfPlanes() throws Exception {
+    byte[] battleUnitClass = readJarEntry(originalJar(), EditorPatchService.BATTLE_UNIT_CLASS_ENTRY);
+
+    assertEquals(
+        DiagonalBackAttackClassPatcher.State.ORIGINAL,
+        DiagonalBackAttackClassPatcher.state(battleUnitClass));
+    DiagonalBackAttackClassPatcher.Result result = DiagonalBackAttackClassPatcher.patch(battleUnitClass);
+    assertEquals(
+        DiagonalBackAttackClassPatcher.State.PATCHED,
+        DiagonalBackAttackClassPatcher.state(result.data()));
+    assertTrue(DiagonalBackAttackClassPatcher.isBehind(1, 100, 100, 84, 116));
+    assertTrue(DiagonalBackAttackClassPatcher.isBehind(4, 100, 100, 116, 84));
+    assertTrue(DiagonalBackAttackClassPatcher.isBehind(2, 100, 100, 116, 68));
+    assertTrue(DiagonalBackAttackClassPatcher.isBehind(8, 100, 100, 84, 100));
+    assertFalse(DiagonalBackAttackClassPatcher.isBehind(1, 100, 100, 116, 84));
+    assertFalse(DiagonalBackAttackClassPatcher.isBehind(4, 100, 100, 84, 116));
+  }
+
   private static void assertWorkspaceCounts(EditorWorkspace workspace) {
     assertEquals(138, workspace.skillLevels().size());
     assertEquals(38, workspace.talents().size());
@@ -88,6 +107,7 @@ class EditorPatchServiceTest {
     assertEquals(PatchState.ORIGINAL, workspace.highValueGraphicDisplayState());
     assertEquals(PatchState.ORIGINAL, workspace.victoryRewardState());
     assertEquals(PatchState.ORIGINAL, workspace.monsterRewardParserState());
+    assertEquals(PatchState.ORIGINAL, workspace.diagonalBackAttackState());
   }
 
   private static void assertClassPatchStates(byte[] heroClass, byte[] gameEngineClass) {

@@ -34,7 +34,7 @@ public final class EditorPatchService {
     }
 
     log.info(
-        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}, physicalDamageCapPatchRequested={}, highValueDisplayPatchRequested={}, highValueGraphicDisplayPatchRequested={}, victoryRewardPatchRequested={}, monsterRewardParserPatchRequested={}",
+        "Building JavaFX full patch with skills={}, talents={}, heroes={}, items={}, monsters={}, statuses={}, resistanceOverflowPatchRequested={}, equipmentBonusPatchRequested={}, physicalDamageCapPatchRequested={}, highValueDisplayPatchRequested={}, highValueGraphicDisplayPatchRequested={}, victoryRewardPatchRequested={}, monsterRewardParserPatchRequested={}, diagonalBackAttackPatchRequested={}",
         plan.skillPatches().size(),
         plan.talentPatches().size(),
         plan.heroPatches().size(),
@@ -47,7 +47,8 @@ public final class EditorPatchService {
         plan.highValueDisplayPatchRequested(),
         plan.highValueGraphicDisplayPatchRequested(),
         plan.victoryRewardPatchRequested(),
-        plan.monsterRewardParserPatchRequested());
+        plan.monsterRewardParserPatchRequested(),
+        plan.diagonalBackAttackPatchRequested());
 
     Files.createDirectories(workspace.outputJar().toAbsolutePath().getParent());
     Path outputJar = nextAvailableOutputJar(workspace.outputJar());
@@ -357,7 +358,8 @@ public final class EditorPatchService {
       boolean highValueDisplayPatchRequested,
       boolean highValueGraphicDisplayPatchRequested,
       boolean victoryRewardPatchRequested,
-      boolean monsterRewardParserPatchRequested) {
+      boolean monsterRewardParserPatchRequested,
+      boolean diagonalBackAttackPatchRequested) {
 
     static PatchBuildPlan from(PatchBuildRequest request) {
       if (request == null || request.workspace() == null) {
@@ -377,7 +379,8 @@ public final class EditorPatchService {
           request.highValueDisplayPatchRequested(),
           request.highValueGraphicDisplayPatchRequested(),
           request.victoryRewardPatchRequested(),
-          request.monsterRewardParserPatchRequested());
+          request.monsterRewardParserPatchRequested(),
+          request.diagonalBackAttackPatchRequested());
     }
 
     boolean hasGameDataPatches() {
@@ -400,7 +403,8 @@ public final class EditorPatchService {
           highValueDisplayPatchRequested,
           highValueGraphicDisplayPatchRequested,
           victoryRewardPatchRequested,
-          monsterRewardParserPatchRequested);
+          monsterRewardParserPatchRequested,
+          diagonalBackAttackPatchRequested);
     }
   }
 }

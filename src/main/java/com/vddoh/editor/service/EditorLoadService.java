@@ -62,6 +62,8 @@ public final class EditorLoadService {
         VictoryRewardClassPatcher.state(gameEngineClass);
     MonsterRewardClassPatcher.State monsterRewardParserState =
         MonsterRewardClassPatcher.state(gameEngineClass);
+    DiagonalBackAttackClassPatcher.State diagonalBackAttackState =
+        DiagonalBackAttackClassPatcher.state(battleUnitClass);
     GameData data = GameData.loadFromOriginalClasses(inputJar);
     List<SkillLevelSnapshot> skillLevels =
         data.skillLevels.stream().map(EditorSnapshots::skillLevel).toList();
@@ -75,7 +77,7 @@ public final class EditorLoadService {
             Files.readAllBytes(gameDat));
     List<StatusSnapshot> statuses = data.statuses.stream().map(EditorSnapshots::status).toList();
     log.info(
-        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, shops={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}, physical damage cap state {}, high-value display state {}, high-value graphic display state {}, victory reward state {}, monster reward parser state {}",
+        "Loaded JavaFX workspace from {} with skills={}, talents={}, heroes={}, items={}, shops={}, monsters={}, statuses={}, resistance state {}, equipment bonus state {}, physical damage cap state {}, high-value display state {}, high-value graphic display state {}, victory reward state {}, monster reward parser state {}, diagonal back-attack state {}",
         inputJar,
         skillLevels.size(),
         talents.size(),
@@ -90,7 +92,8 @@ public final class EditorLoadService {
         highValueDisplayState,
         highValueGraphicDisplayState,
         victoryRewardState,
-        monsterRewardParserState);
+        monsterRewardParserState,
+        diagonalBackAttackState);
     return EditorWorkspace.builder()
         .inputJar(inputJar)
         .gameDat(gameDat)
@@ -107,6 +110,7 @@ public final class EditorLoadService {
         .highValueGraphicDisplayState(PatchState.from(highValueGraphicDisplayState))
         .victoryRewardState(PatchState.from(victoryRewardState))
         .monsterRewardParserState(PatchState.from(monsterRewardParserState))
+        .diagonalBackAttackState(PatchState.from(diagonalBackAttackState))
         .skillLevels(skillLevels)
         .talents(talents)
         .heroes(heroes)

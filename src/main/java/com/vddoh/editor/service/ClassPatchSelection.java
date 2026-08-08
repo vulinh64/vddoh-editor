@@ -7,7 +7,8 @@ record ClassPatchSelection(
     boolean highValueDisplay,
     boolean highValueGraphicDisplay,
     boolean victoryReward,
-    boolean monsterRewardParser) {
+    boolean monsterRewardParser,
+    boolean diagonalBackAttack) {
 
   boolean anyRequested() {
     return resistanceOverflow
@@ -16,6 +17,7 @@ record ClassPatchSelection(
         || highValueDisplay
         || highValueGraphicDisplay
         || victoryReward
-        || monsterRewardParser;
+        || monsterRewardParser
+        || diagonalBackAttack;
   }
 }

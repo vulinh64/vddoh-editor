@@ -21,7 +21,8 @@ public record PatchBuildRequest(
     boolean highValueDisplayPatchRequested,
     boolean highValueGraphicDisplayPatchRequested,
     boolean victoryRewardPatchRequested,
-    boolean monsterRewardParserPatchRequested) {
+    boolean monsterRewardParserPatchRequested,
+    boolean diagonalBackAttackPatchRequested) {
 
   public PatchBuildRequest {
     skillEdits = skillEdits == null ? Collections.emptyList() : List.copyOf(skillEdits);

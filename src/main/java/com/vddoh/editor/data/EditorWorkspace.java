@@ -24,6 +24,7 @@ public record EditorWorkspace(
     PatchState highValueGraphicDisplayState,
     PatchState victoryRewardState,
     PatchState monsterRewardParserState,
+    PatchState diagonalBackAttackState,
     List<SkillLevelSnapshot> skillLevels,
     List<TalentSnapshot> talents,
     List<HeroSnapshot> heroes,

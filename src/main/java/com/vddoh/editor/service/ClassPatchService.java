@@ -28,9 +28,21 @@ final class ClassPatchService {
     ClassPatchContext context = new ClassPatchContext(workspace);
     List<String> patchSummaries = new ArrayList<>();
     patchHeroClass(selection, context, patchSummaries);
+    patchBattleUnitClass(selection, context, patchSummaries);
     patchGameEngineClass(selection, context, patchSummaries);
     summaries.add("class patches: " + String.join(", ", patchSummaries));
     context.addReplacements(replacements);
+  }
+
+  private static void patchBattleUnitClass(
+      ClassPatchSelection selection, ClassPatchContext context, List<String> summaries)
+      throws IOException {
+    if (selection.diagonalBackAttack()) {
+      DiagonalBackAttackClassPatcher.Result result =
+          DiagonalBackAttackClassPatcher.patch(context.battleUnitClass());
+      context.battleUnitClass(result.data());
+      summaries.add("diagonal back attack: " + result.summary());
+    }
   }
 
   private static void patchHeroClass(
@@ -85,6 +97,7 @@ final class ClassPatchService {
     private final EditorWorkspace workspace;
     private byte[] heroClass;
     private byte[] gameEngineClass;
+    private byte[] battleUnitClass;
 
     private ClassPatchContext(EditorWorkspace workspace) {
       this.workspace = workspace;
@@ -108,6 +121,17 @@ final class ClassPatchService {
       return gameEngineClass;
     }
 
+    private byte[] battleUnitClass() throws IOException {
+      if (battleUnitClass == null) {
+        battleUnitClass = readJarEntry(workspace.inputJar(), EditorPatchService.BATTLE_UNIT_CLASS_ENTRY);
+      }
+      return battleUnitClass;
+    }
+
+    private void battleUnitClass(byte[] battleUnitClass) {
+      this.battleUnitClass = battleUnitClass;
+    }
+
     private void gameEngineClass(byte[] gameEngineClass) {
       this.gameEngineClass = gameEngineClass;
     }
@@ -118,6 +142,9 @@ final class ClassPatchService {
       }
       if (gameEngineClass != null) {
         replacements.put(GAME_ENGINE_CLASS_ENTRY, gameEngineClass);
+      }
+      if (battleUnitClass != null) {
+        replacements.put(EditorPatchService.BATTLE_UNIT_CLASS_ENTRY, battleUnitClass);
       }
     }
   }

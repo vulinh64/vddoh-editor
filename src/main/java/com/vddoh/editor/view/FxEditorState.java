@@ -38,6 +38,7 @@ public final class FxEditorState {
   private final BooleanProperty patchHighValueGraphicDisplay = new SimpleBooleanProperty(false);
   private final BooleanProperty patchVictoryReward = new SimpleBooleanProperty(false);
   private final BooleanProperty patchMonsterRewardParser = new SimpleBooleanProperty(false);
+  private final BooleanProperty patchDiagonalBackAttack = new SimpleBooleanProperty(false);
   private Supplier<List<SkillEdit>> skillEdits = List::of;
   private Supplier<List<TalentEdit>> talentEdits = List::of;
   private Supplier<List<HeroEdit>> heroEdits = List::of;
@@ -198,6 +199,18 @@ public final class FxEditorState {
 
   public void patchMonsterRewardParser(boolean patchMonsterRewardParser) {
     this.patchMonsterRewardParser.set(patchMonsterRewardParser);
+  }
+
+  public BooleanProperty patchDiagonalBackAttackProperty() {
+    return patchDiagonalBackAttack;
+  }
+
+  public boolean patchDiagonalBackAttack() {
+    return patchDiagonalBackAttack.get();
+  }
+
+  public void patchDiagonalBackAttack(boolean patchDiagonalBackAttack) {
+    this.patchDiagonalBackAttack.set(patchDiagonalBackAttack);
   }
 
   public void skillEditsSupplier(Supplier<List<SkillEdit>> skillEdits) {
