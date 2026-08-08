@@ -35,7 +35,7 @@ public enum ItemEffectLabel {
       return "Elemental Damage";
     }
     if (category == 3 && kind == 5) {
-      return "Blood Drain";
+      return "Blood Drain (blooded targets only)";
     }
     return fallback;
   }

@@ -19,10 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 public final class EditorPatchService {
 
   public static final String HERO_CLASS_ENTRY = "g.class";
+  public static final String BATTLE_UNIT_CLASS_ENTRY = "b.class";
   public static final String GAME_ENGINE_CLASS_ENTRY = "j.class";
 
   public static final String GAME_DAT_FILE = "game.dat";
   private static final String ITEM_DAT_FILE = "item.dat";
+  private static final String M_DAT_FILE = "m.dat";
 
   public static BuildResult buildFullPatch(PatchBuildRequest request) throws IOException {
     PatchBuildPlan plan = PatchBuildPlan.from(request);
@@ -172,6 +174,22 @@ public final class EditorPatchService {
     Path outputJar =
         replaceSingleEntry(workspace, workspace.itemDatEntryName(), ITEM_DAT_FILE, itemData);
     return BuildResult.builder().outputJar(outputJar).summary("items: " + summary).build();
+  }
+
+  public static BuildResult buildShopPatch(EditorWorkspace workspace, List<ShopEdit> edits)
+      throws IOException {
+    if (workspace == null) {
+      throw new IllegalArgumentException("Load a VDDOH JAR before building a patch.");
+    }
+    if (edits == null || edits.isEmpty()) {
+      throw new IllegalArgumentException("No shop edits to patch.");
+    }
+    byte[] mData = MdatShopService.patch(Files.readAllBytes(workspace.mDat()), edits);
+    Path outputJar = replaceSingleEntry(workspace, workspace.mDatEntryName(), M_DAT_FILE, mData);
+    return BuildResult.builder()
+        .outputJar(outputJar)
+        .summary("Children shops: " + edits.size() + " edited")
+        .build();
   }
 
   private static Path replaceSingleEntry(

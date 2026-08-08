@@ -14,6 +14,7 @@ public final class ItemRow {
   final int resourceBonus;
   final int weaponReach;
   final int runeSlots;
+  final String questInstruction;
   final List<ItemEffectRow> effects;
   final String notes;
   int price;
@@ -37,6 +38,7 @@ public final class ItemRow {
       int resourceBonus,
       int weaponReach,
       int runeSlots,
+      String questInstruction,
       List<ItemEffectRow> effects,
       String notes) {
     this.id = id;
@@ -54,6 +56,7 @@ public final class ItemRow {
     this.resourceBonus = resourceBonus;
     this.weaponReach = weaponReach;
     this.runeSlots = runeSlots;
+    this.questInstruction = questInstruction;
     this.effects = effects;
     this.notes = notes;
   }

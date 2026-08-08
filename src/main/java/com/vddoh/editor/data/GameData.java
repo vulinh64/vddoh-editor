@@ -182,6 +182,7 @@ public final class GameData {
             case 3 -> (u8(raw(item, 18)) >> 5) & 7;
             default -> 0;
           };
+      String questInstruction = category == 8 ? decodeName(item, 1, decode) : "";
       List<ItemEffectRow> effects = decodeItemEffects(item, category, statusNames, skillNames);
       appendLinkedSkillPreview(effects, item, category, skillRows);
       rows.add(
@@ -201,6 +202,7 @@ public final class GameData {
               resourceBonus,
               weaponReach,
               runeSlots,
+              questInstruction,
               effects,
               itemNotes(category, subtype, weaponReach, runeSlots)));
     }

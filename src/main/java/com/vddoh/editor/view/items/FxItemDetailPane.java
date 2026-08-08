@@ -43,6 +43,8 @@ public final class FxItemDetailPane extends ScrollPane {
   public static final String READ_ONLY_HINT = "read-only";
   public static final String WEAPON_SIDE = "Weapon";
   private static final List<Integer> DAMAGE_KINDS = List.of(0, 1, 2, 3, 4, 5);
+  public static final String FIELD_NOTE = "field-note";
+  public static final String FIELD_LABEL = "field-label";
   private final FxEditorState state;
   private final FxNavigation navigation;
   private final ObjectProperty<FxItemViewModel> selectedItem = new SimpleObjectProperty<>();
@@ -81,6 +83,9 @@ public final class FxItemDetailPane extends ScrollPane {
     }
     if (item.category() == 9 || item.category() == 10) {
       panes.add(pane("Linked Skill", linkedSkillBox(viewModel)));
+    }
+    if (item.category() == 8) {
+      panes.add(pane("Quest Instruction", questInstructionBox(item)));
     }
     panes.add(
         pane(
@@ -133,6 +138,7 @@ public final class FxItemDetailPane extends ScrollPane {
       if (weaponDamage.isPresent()) {
         FxItemEffectViewModel effect = weaponDamage.orElseThrow();
         addWeaponDamageTypeRow(grid, row++, viewModel, effect);
+        row = addBloodDrainEvidenceRows(grid, row, effect);
         addEffectValueRow(grid, row++, viewModel, effect, "Weapon damage", 0xffff, "0..65535");
       }
     }
@@ -179,6 +185,16 @@ public final class FxItemDetailPane extends ScrollPane {
             "%s, skill id %d, level/variant %d"
                 .formatted(effect.target(), effect.linkedSkillId(), effect.skillLevel()));
     box.getChildren().addAll(summary, linkedSkillAction(viewModel, effect));
+    return box;
+  }
+
+  private static VBox questInstructionBox(ItemSnapshot item) {
+    VBox box = new VBox(6);
+    Label instruction = new Label(item.questInstruction());
+    instruction.setWrapText(true);
+    Label note = new Label("Read-only text stored with this Text/Special item.");
+    note.getStyleClass().add(FIELD_NOTE);
+    box.getChildren().addAll(instruction, note);
     return box;
   }
 
@@ -282,7 +298,7 @@ public final class FxItemDetailPane extends ScrollPane {
   private void addWeaponDamageTypeRow(
       GridPane grid, int row, FxItemViewModel item, FxItemEffectViewModel effect) {
     Label label = new Label("Weapon elemental (damage type)");
-    label.getStyleClass().add("field-label");
+    label.getStyleClass().add(FIELD_LABEL);
     ComboBox<Integer> selector = new ComboBox<>(FXCollections.observableArrayList(DAMAGE_KINDS));
     selector.setConverter(damageKindConverter());
     selector.setValue(effect.effectKind());
@@ -301,7 +317,7 @@ public final class FxItemDetailPane extends ScrollPane {
               value);
         });
     Label note = new Label("existing weapon damage entry");
-    note.getStyleClass().add("field-note");
+    note.getStyleClass().add(FIELD_NOTE);
     grid.add(label, 0, row);
     grid.add(selector, 1, row);
     grid.add(note, 2, row);
@@ -316,7 +332,7 @@ public final class FxItemDetailPane extends ScrollPane {
       int maximum,
       String rangeHint) {
     Label label = new Label(labelText);
-    label.getStyleClass().add("field-label");
+    label.getStyleClass().add(FIELD_LABEL);
     Spinner<Integer> spinner = new Spinner<>();
     spinner.setEditable(true);
     spinner.setValueFactory(
@@ -342,10 +358,60 @@ public final class FxItemDetailPane extends ScrollPane {
             });
     FxSpinnerSupport.syncFromProperty(spinner, effect.valueProperty(), syncing);
     Label note = new Label(rangeHint);
-    note.getStyleClass().add("field-note");
+    note.getStyleClass().add(FIELD_NOTE);
     grid.add(label, 0, row);
     grid.add(spinner, 1, row);
     grid.add(note, 2, row);
+  }
+
+  private static int addBloodDrainEvidenceRows(
+      GridPane grid, int row, FxItemEffectViewModel effect) {
+    addBloodDrainEvidenceRow(
+        grid,
+        row++,
+        effect,
+        "Blood drain targets",
+        "Blooded: Junger Gabolg (1), Schlange (3)",
+        "read-only gameplay evidence");
+    addBloodDrainEvidenceRow(
+        grid,
+        row++,
+        effect,
+        "Bloodless target",
+        "Manok 30 — no blood can be recovered",
+        "read-only gameplay evidence");
+    addBloodDrainEvidenceRow(
+        grid,
+        row++,
+        effect,
+        "Monster blood flag",
+        "Unknown; not exposed for editing",
+        "do not infer from Effect ID");
+    return row;
+  }
+
+  private static void addBloodDrainEvidenceRow(
+      GridPane grid,
+      int row,
+      FxItemEffectViewModel effect,
+      String labelText,
+      String valueText,
+      String hintText) {
+    Label label = new Label(labelText);
+    label.getStyleClass().add(FIELD_LABEL);
+    Label value = new Label(valueText);
+    Label hint = new Label(hintText);
+    hint.getStyleClass().add(FIELD_NOTE);
+    var visible = effect.effectKindProperty().isEqualTo(5);
+    label.visibleProperty().bind(visible);
+    label.managedProperty().bind(visible);
+    value.visibleProperty().bind(visible);
+    value.managedProperty().bind(visible);
+    hint.visibleProperty().bind(visible);
+    hint.managedProperty().bind(visible);
+    grid.add(label, 0, row);
+    grid.add(value, 1, row);
+    grid.add(hint, 2, row);
   }
 
   private static StringConverter<Integer> damageKindConverter() {
@@ -361,7 +427,7 @@ public final class FxItemDetailPane extends ScrollPane {
           case 2 -> "Ice";
           case 3 -> "Light";
           case 4 -> "Shadow";
-          case 5 -> "Blood Drain";
+          case 5 -> "Blood Drain (blooded targets only)";
           default -> "";
         };
       }
@@ -394,11 +460,11 @@ public final class FxItemDetailPane extends ScrollPane {
 
   private static void addRow(GridPane grid, int row, String label, Object value, String hint) {
     Label name = new Label(label);
-    name.getStyleClass().add("field-label");
+    name.getStyleClass().add(FIELD_LABEL);
     Label val = new Label(String.valueOf(value));
     val.getStyleClass().add("field-value");
     Label note = new Label(hint == null ? "" : hint);
-    note.getStyleClass().add("field-note");
+    note.getStyleClass().add(FIELD_NOTE);
     grid.add(name, 0, row);
     grid.add(val, 1, row);
     grid.add(note, 2, row);
@@ -414,7 +480,7 @@ public final class FxItemDetailPane extends ScrollPane {
       IntegerProperty property,
       int max) {
     Label name = new Label(label);
-    name.getStyleClass().add("field-label");
+    name.getStyleClass().add(FIELD_LABEL);
     Spinner<Integer> spinner = new Spinner<>();
     spinner.setEditable(true);
     spinner.setValueFactory(
@@ -440,7 +506,7 @@ public final class FxItemDetailPane extends ScrollPane {
             });
     FxSpinnerSupport.syncFromProperty(spinner, property, updatingFromProperty);
     Label note = new Label("safe edit");
-    note.getStyleClass().add("field-note");
+    note.getStyleClass().add(FIELD_NOTE);
     grid.add(name, 0, row);
     grid.add(spinner, 1, row);
     grid.add(note, 2, row);

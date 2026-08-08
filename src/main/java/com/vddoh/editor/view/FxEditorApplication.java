@@ -2,6 +2,7 @@ package com.vddoh.editor.view;
 
 import com.vddoh.editor.view.heroes.FxHeroesView;
 import com.vddoh.editor.view.items.FxItemsView;
+import com.vddoh.editor.view.shops.FxChildrenShopsView;
 import com.vddoh.editor.view.monsters.FxMonstersView;
 import com.vddoh.editor.view.skills.FxSkillsView;
 import com.vddoh.editor.view.statuses.FxStatusesView;
@@ -66,12 +67,14 @@ public final class FxEditorApplication extends Application {
     Tab talents = new Tab("Talents", new FxTalentsView(state));
     Tab heroes = new Tab("Heroes", new FxHeroesView(state));
     Tab items = new Tab("Items", new FxItemsView(state, navigation));
+    Tab shops = new Tab("Children of Apocalypse Shop", new FxChildrenShopsView(state));
     Tab monsters = new Tab("Monsters", new FxMonstersView(state));
     Tab statuses = new Tab("Statuses", new FxStatusesView(state));
     skills.setClosable(false);
     talents.setClosable(false);
     heroes.setClosable(false);
     items.setClosable(false);
+    shops.setClosable(false);
     monsters.setClosable(false);
     statuses.setClosable(false);
     navigation
@@ -82,7 +85,7 @@ public final class FxEditorApplication extends Application {
                 tabs.getSelectionModel().select(skills);
               }
             });
-    tabs.getTabs().addAll(skills, talents, heroes, items, monsters, statuses);
+    tabs.getTabs().addAll(skills, talents, heroes, items, shops, monsters, statuses);
     return tabs;
   }
 }

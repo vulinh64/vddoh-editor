@@ -20,7 +20,8 @@
 .talents-view,
 .heroes-view,
 .monsters-view,
-.statuses-view {
+.statuses-view,
+.shops-view {
   -fx-background-color: #12161d;
 }
 
@@ -78,6 +79,35 @@
 .combo-box-popup .list-cell:filled:selected {
   -fx-background-color: #36537a;
   -fx-text-fill: #f3f7fc;
+}
+
+.list-view {
+  -fx-background-color: #171d26;
+  -fx-control-inner-background: #171d26;
+  -fx-border-color: #334155;
+}
+
+.list-cell {
+  -fx-background-color: #171d26;
+  -fx-text-fill: #e7edf5;
+}
+
+.list-cell:filled:odd {
+  -fx-background-color: #1b222d;
+}
+
+.list-cell:filled:hover,
+.list-cell:filled:selected {
+  -fx-background-color: #36537a;
+  -fx-text-fill: #f3f7fc;
+}
+
+.combo-box-base > .arrow-button {
+  -fx-background-color: #2b3a4f;
+}
+
+.combo-box-base > .arrow-button > .arrow {
+  -fx-background-color: #d6deea;
 }
 
 .tab-pane,

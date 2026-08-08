@@ -27,7 +27,7 @@ public record FxItemEffectViewModel(
     if (canEditEffectKind()) {
       return switch (effectKind()) {
         case 1, 2, 3, 4 -> "Elemental Damage";
-        case 5 -> "Blood Drain";
+        case 5 -> "Blood Drain (blooded targets only)";
         default -> "Flat stat/damage";
       };
     }
@@ -41,7 +41,7 @@ public record FxItemEffectViewModel(
         case 2 -> "Ice damage";
         case 3 -> "Light damage";
         case 4 -> "Shadow damage";
-        case 5 -> "Blood drain";
+        case 5 -> "Blood drain (no recovery from bloodless targets)";
         default -> "Physical";
       };
     }

@@ -412,6 +412,19 @@ Fire/Ice/Light/Shadow/Blood drain damage -> damage reduction / protection value
 Status effects                       -> chance/immunity-style status blocking
 ```
 
+### Blood-Drain Target Eligibility
+
+`Blood Drain` is target-dependent: the attack can only recover blood from an
+enemy that has blood. In-game checks confirm that `Junger Gabolg (1)` and
+`Schlange (3)` are valid blood-drain targets, while `Manok 30` is bloodless and
+does not provide blood to suck.
+
+The packed monster field that determines this eligibility is not confirmed.
+In particular, do not infer it from the writable `Effect ID`: the latter is a
+death-side effect byte and has not been verified as the blood-presence flag.
+The editor therefore keeps monster data unchanged and labels weapon kind `5`
+as `Blood Drain (blooded targets only)`.
+
 ## Confirmed Level-1 Base Values
 
 These values were confirmed from in-game screenshots with no relevant stat items

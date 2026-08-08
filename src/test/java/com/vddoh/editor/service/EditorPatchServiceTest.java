@@ -19,6 +19,7 @@ import com.vddoh.editor.data.MonsterEdit;
 import com.vddoh.editor.data.MonsterSnapshot;
 import com.vddoh.editor.data.PatchBuildRequest;
 import com.vddoh.editor.data.PatchState;
+import com.vddoh.editor.data.ShopEdit;
 import com.vddoh.editor.data.StatCurveEdit;
 import com.vddoh.editor.data.StatCurveSnapshot;
 import java.io.IOException;
@@ -542,6 +543,38 @@ class EditorPatchServiceTest {
     assertEffect(vampireStone, "Consumable", "HP effect", "HP", "999");
     assertEffect(vampireStone, "Consumable", "Resource effect", "Blood/Soul", "999");
     assertEffect(vampireStone, "Consumable status effect", "Status", "Poison", "100");
+  }
+
+  @Test
+  void textSpecialItemsExposeTheirReadOnlyQuestInstruction() throws Exception {
+    ItemSnapshot finalQuest = item(workspace("quest-text.jar"), "This is the end (30)");
+
+    assertEquals("Go into the church east of Lammar and kill Ayrene.", finalQuest.questInstruction());
+  }
+
+  @Test
+  void childrenShopStockCanAddAndDeleteConfirmedItems() throws Exception {
+    EditorWorkspace workspace = workspace("children-shop.jar");
+    var lordCraft =
+        workspace.shops().stream()
+            .filter(shop -> shop.name().equals("Lord Craft shop"))
+            .findFirst()
+            .orElseThrow();
+    List<Integer> updatedStock = List.of(6, 7, 24, 25, 10, 26);
+
+    byte[] patched =
+        MdatShopService.patch(
+            Files.readAllBytes(workspace.mDat()),
+            List.of(
+                ShopEdit.builder()
+                    .shopId(lordCraft.id())
+                    .eventOffset(lordCraft.eventOffset())
+                    .itemIds(updatedStock)
+                    .build()));
+
+    assertTrue(
+        MdatShopService.parse(patched, workspace.items()).stream()
+            .anyMatch(shop -> shop.itemIds().equals(updatedStock)));
   }
 
   @Test

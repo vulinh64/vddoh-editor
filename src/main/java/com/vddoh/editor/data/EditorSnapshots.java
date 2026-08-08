@@ -23,6 +23,7 @@ public final class EditorSnapshots {
         .resourceBonus(row.resourceBonus)
         .weaponReach(row.weaponReach)
         .runeSlots(row.runeSlots)
+        .questInstruction(row.questInstruction)
         .notes(row.notes)
         .effects(row.effects.stream().map(EditorSnapshots::itemEffect).toList())
         .build();

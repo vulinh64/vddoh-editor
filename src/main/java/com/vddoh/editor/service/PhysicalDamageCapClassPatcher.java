@@ -67,6 +67,78 @@ public final class PhysicalDamageCapClassPatcher {
     }
   }
 
+  /**
+   * Detect the direct-distribution damage cap before falling back to the legacy editor patch. The
+   * confirmed outgoing hero basic-attack resolver is {@code b.a(int)}, not {@code g}.
+   */
+  public static State state(byte[] heroClass, byte[] battleUnitClass) {
+    if (hasDirectDistributionCap(battleUnitClass)) {
+      return State.PATCHED;
+    }
+    return state(heroClass);
+  }
+
+  private static boolean hasDirectDistributionCap(byte[] data) {
+    try {
+      ClassModel model = ClassPatchSupport.classModel(data);
+      return directCapSites(model) == 2 && directDamageMaskSites(model) >= 2;
+    } catch (RuntimeException | LinkageError _) {
+      return false;
+    }
+  }
+
+  private static int directCapSites(ClassModel model) {
+    int matches = 0;
+    for (MethodModel method : model.methods()) {
+      if (isNotDirectDamageMethod(method)) {
+        continue;
+      }
+      List<Instruction> instructions = ClassPatchSupport.instructions(method);
+      for (int i = 0; i + 5 < instructions.size(); i++) {
+        if (isBattleResultField(instructions.get(i), Opcode.GETFIELD)
+            && isPush(instructions.get(i + 1), DAMAGE_CAP)
+            && instructions.get(i + 2).opcode() == Opcode.IF_ICMPLE
+            && isLoadThis(instructions.get(i + 3))
+            && isPush(instructions.get(i + 4), DAMAGE_CAP)
+            && isBattleResultField(instructions.get(i + 5), Opcode.PUTFIELD)) {
+          matches++;
+        }
+      }
+    }
+    return matches;
+  }
+
+  private static int directDamageMaskSites(ClassModel model) {
+    int matches = 0;
+    for (MethodModel method : model.methods()) {
+      if (isNotDirectDamageMethod(method)) {
+        continue;
+      }
+      List<Instruction> instructions = ClassPatchSupport.instructions(method);
+      for (int i = 0; i + 2 < instructions.size(); i++) {
+        if (isBattleResultField(instructions.get(i), Opcode.GETFIELD)
+            && isPush(instructions.get(i + 1), DAMAGE_MASK)
+            && instructions.get(i + 2).opcode() == Opcode.IAND) {
+          matches++;
+        }
+      }
+    }
+    return matches;
+  }
+
+  private static boolean isNotDirectDamageMethod(MethodModel method) {
+    return !HERO_ACTION_METHOD.equals(method.methodName().stringValue())
+        || !"(I)V".equals(method.methodType().stringValue());
+  }
+
+  private static boolean isBattleResultField(Instruction instruction, Opcode opcode) {
+    return instruction instanceof FieldInstruction field
+        && field.opcode() == opcode
+        && BATTLE_UNIT_CLASS_NAME.equals(field.owner().asInternalName())
+        && "i".equals(field.name().stringValue())
+        && HERO_RESULT_DESCRIPTOR.equals(field.type().stringValue());
+  }
+
   record Result(byte[] data, PatchSummary summary) {
 
     @Override
@@ -182,7 +254,6 @@ public final class PhysicalDamageCapClassPatcher {
     return HERO_ACTION_METHOD.equals(method.methodName().stringValue())
         && HERO_ACTION_DESCRIPTOR.equals(method.methodType().stringValue());
   }
-
 
   private static boolean isOriginalSite(List<Instruction> instructions, int offset) {
     return isApplyPhysicalDamageCall(instructions, offset)

@@ -6,6 +6,7 @@ files:
 ```text
 game-dat-bitmap.md
 item-dat-bitmap.md
+m-dat-shops.md
 ```
 
 These are living reverse-engineering documents. They should describe the data

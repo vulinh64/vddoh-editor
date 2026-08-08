@@ -23,10 +23,12 @@ public record ItemSnapshot(
     int resourceBonus,
     int weaponReach,
     int runeSlots,
+    String questInstruction,
     String notes,
     List<ItemEffectSnapshot> effects) {
 
   public ItemSnapshot {
+    questInstruction = questInstruction == null ? "" : questInstruction;
     effects = effects == null ? Collections.emptyList() : List.copyOf(effects);
   }
 }

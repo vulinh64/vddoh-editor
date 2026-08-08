@@ -101,7 +101,7 @@ Confirmed example: Vampire Stone uses `short_g = 999` and `short_h = 999`.
 | `1`, `2`, `4` | skip 1 byte | Probable | No | Tail semantics not yet exposed. |
 | `3` | `skipWeaponTail` | Probable | No | Uses local flags; weapon tail not written. |
 | `5` | `parseConsumableTail` | Confirmed | Partial | See category-5 table. |
-| `8` | `skipTextTail` | Probable | No | Text-only shape; not written. |
+| `8` | `skipTextTail` | Confirmed | No | A 16-bit big-endian text length followed by encoded quest-instruction bytes. The editor decodes and shows this second item byte-array read-only; it never writes it. |
 | `9`, `10` | skip 1 byte | Confirmed | No | Linked skill id/level are currently read-only item fields. |
 | `12` | `skipQuestTail` | Probable | No | Quest item tail not written. |
 

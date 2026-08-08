@@ -53,6 +53,7 @@ public final class EditorSupport {
   public static final String BYTE_D = "byte_d";
   public static final String ARMOR_SIDE = "Armor";
   public static final String SHORT_ARR_B_RAW = "short_arr_b";
+  public static final String INT_ARR_A = "int_arr_a";
 
   public static Path editorUserPath(String child) {
     return Path.of(System.getProperty("user.home"), ".vddoh-editor", child);
@@ -346,12 +347,12 @@ public final class EditorSupport {
   private static void appendItemArrays(
       List<ItemEffectRow> rows, Object item, int category, String[] statusNames) {
     if (category == 7) {
-      appendRuneIntEffects(rows, WEAPON_SIDE, intArray(raw(item, 13)), "int_arr_a");
+      appendRuneIntEffects(rows, WEAPON_SIDE, intArray(raw(item, 13)), INT_ARR_A);
       appendRuneIntEffects(rows, ARMOR_SIDE, intArray(raw(item, 14)), "int_arr_b");
       appendRuneStatusEffects(rows, shortArray(raw(item, 16)), statusNames);
       return;
     }
-    appendIntEffects(rows, "Equipment/Weapon", intArray(raw(item, 13)), "int_arr_a", category);
+    appendIntEffects(rows, "Equipment/Weapon", intArray(raw(item, 13)), INT_ARR_A, category);
     appendIntEffects(rows, "Armor effect", intArray(raw(item, 14)), "int_arr_b", category);
     appendShortEffects(
         rows,
@@ -539,7 +540,7 @@ public final class EditorSupport {
       int value = packed & 0xffff;
       String type = ItemEffectLabel.intEffectType(category, kind, effectKind(kind));
       String target = ItemEffectLabel.intEffectTarget(category, kind, statName(kind));
-      if (category == 3 && "int_arr_a".equals(rawName)) {
+      if (category == 3 && INT_ARR_A.equals(rawName)) {
         rows.add(ItemEffectRow.weaponDamage(side, type, target, String.valueOf(value), "%s[%d]".formatted(rawName, i), kind));
       } else {
         rows.add(ItemEffectRow.of(side, type, target, String.valueOf(value), StringUtils.EMPTY, "%s[%d]".formatted(rawName, i)));
